@@ -305,7 +305,7 @@ class BotoManager(object):
 
             # get the response
             # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/logs.html#CloudWatchLogs.Client.get_query_results
-            response = client.get_query_results(
+            response = self.logs_client.get_query_results(
                 queryId=queryId
             )
             while response["status"] != "Complete":
@@ -316,7 +316,7 @@ class BotoManager(object):
                     exit()
                 print("hang in there while AWS is searching...")
                 time.sleep(60)
-                response = client.get_query_results(
+                response = self.logs_client.get_query_results(
                     queryId=queryId
                 )
             # print(response["results"])
