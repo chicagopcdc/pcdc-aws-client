@@ -22,10 +22,16 @@ class BotoManager(object):
 
     def __init__(self, config, logger):
         self.config = config
-        self.sts_client = client("sts", **config)
-        self.s3_client = client("s3", **config)
         self.logger = logger
-        self.iam = client('iam', **config)
+        if  'aws_session_token' in config:
+             self.session = Session(**config)
+             self.s3_client = self.session.client('s3')
+             self.sts_client = self.session.client("sts")
+             self.iam = self.session.client('iam')
+        else:
+            self.s3_client = client('s3', **config)
+            self.sts_client = client("sts", **config)
+            self.iam = client('iam', **config)
         
         if 'region_name' in config:
             # self.sqs_client = client("sqs", **config)
