@@ -3,7 +3,7 @@ name = "pcdc-aws-client"
 version = "0.1.0"
 description = "client for aws api"
 authors = ["Paul Murdoch <t-9pmurdo@uchicago.edu>"]
-packages = [{include = "pcdc-aws-client\aws_client\"}]
+packages = [{include = "pcdc-aws-client\aws_client"}]
 
 [tool.poetry.dependencies]
 python = "^3.7"
