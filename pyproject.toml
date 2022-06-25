@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "aws_client"
+name = "pcdc-aws-client"
 version = "0.1.0"
 description = "client for aws api"
 authors = ["Paul Murdoch <t-9pmurdo@uchicago.edu>"]
