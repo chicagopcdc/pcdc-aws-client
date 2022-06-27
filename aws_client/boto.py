@@ -302,7 +302,7 @@ class BotoManager(object):
                 logGroupName=env_group_name,
                 startTime=epoch_start,
                 endTime=epoch_end,
-                #queryString=queryString,
+                queryString=queryString,
                 limit=10000
             )
             # print(res)
