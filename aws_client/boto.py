@@ -325,6 +325,7 @@ class BotoManager(object):
                 response = self.logs_client.get_query_results(
                     queryId=queryId
                 )
+                return response
             # print(response["results"])
             # print(len(response["results"]))
     
