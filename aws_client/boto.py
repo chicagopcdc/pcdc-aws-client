@@ -256,7 +256,7 @@ class BotoManager(object):
     # #gen3_scripts\check_vpn_restricted\sendEmail.py
     #gen3_scripts\slackUpdates\sendEmail.py
     #fence\utils.py
-    def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET):
+    def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET, CONFIGURATION_SET=None):
         
         try:
 		#Provide the contents of the email.
@@ -285,7 +285,7 @@ class BotoManager(object):
                 Source=SENDER,
                     # If you are not using a configuration set, comment or delete the
                     # following line
-                    # ConfigurationSetName=CONFIGURATION_SET,
+                    #ConfigurationSetName=CONFIGURATION_SET,
 		)
         # Display an error if something goes wrong.	
         except ClientError as e:
