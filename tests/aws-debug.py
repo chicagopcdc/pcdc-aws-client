@@ -1,6 +1,6 @@
 from boto3 import client
 from boto3.exceptions import Boto3Error
-from awsclient.client.aws.boto import BotoManager
+from aws_client.boto import BotoManager
 import os
 import json
 import pytest
@@ -125,7 +125,7 @@ def main():
     test_get_user_group(test_botomanager, group_list)
     test_get_all_groups(test_botomanager, group_list)
     test_add_user_to_group(test_botomanager, group_list, '')
-    test_create_user_group(test_botomanager, ')
+    test_create_user_group(test_botomanager, '')
 
     #different user with no premissions
     config_test_assume_role=  {'aws_access_key_id': '',
