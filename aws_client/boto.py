@@ -274,8 +274,9 @@ class BotoManager(object):
     # #gen3_scripts\check_vpn_restricted\sendEmail.py
     #gen3_scripts\slackUpdates\sendEmail.py
     #fence\utils.py
-    def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET, CONFIGURATION_SET=None):
-        
+    def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET, CONFIGURATION_SET=None, config=None):
+        if conifg:
+            self.ses_client = client('ses', **config)
         try:
 		#Provide the contents of the email.
             response = self.ses_client.send_email(
@@ -395,6 +396,56 @@ class BotoManager(object):
                 "Can not complete multipart upload for {}. Detail {}".format(key, error)
             )
 
+    def restrict_sc(SECURITY_GROUP_ID):
+        security_group = self.ec2_resource.SecurityGroup(SECURITY_GROUP_ID)
+        try:
+		response = self.ec2_client.describe_security_groups(GroupIds=[SECURITY_GROUP_ID])
+		#print(response)
+		ip_dict = {}
+		for sc in response["SecurityGroups"]:
+			for p in sc["IpPermissions"]:
+				#print(p)
+				for ip in p["IpRanges"]:
+					#print(ip)
+					if ip["CidrIp"] not in ip_dict:
+						ip_dict[ip["CidrIp"]] = []
+					ip_dict[ip["CidrIp"]].append({"protocol": p["IpProtocol"], "port": p["FromPort"]})
+
+		# print(ip_dict)
+		# {'0.0.0.0/0': [{'protocol': 'tcp', 'port': 80}, {'protocol': 'icmp', 'port': 3}, {'protocol': 'tcp', 'port': 443}]}
+
+		# REMOVE HTTP OPEN ACCESS
+		if "0.0.0.0/0" in ip_dict:
+                	ip_extract = [i for i in ip_dict["0.0.0.0/0"] if i["protocol"] == "tcp" and (i["port"] == 80 or i["port"] == 443)]
+                	for i in ip_extract:
+                        	security_group.revoke_ingress(IpProtocol=i["protocol"], CidrIp="0.0.0.0/0", FromPort=i["port"], ToPort=i["port"])
+                        	# print(i)
+
+		# ADD LIMITED HTTP ACCESS BY UCHCIAGO VPN 
+		ips = ["205.208.0.0/17", "128.135.0.0/16", "165.68.0.0/16"]
+		for ip in ips:
+			if ip not in ip_dict:
+				security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=80,ToPort=80)
+				security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=443,ToPort=443)
+				# print(ip)
+			else:
+				skip_80 = False
+				skip_443 = False
+				for i in ip_dict[ip]:
+					if i["protocol"] == "tcp":
+						if i["port"] == 80:
+							skip_80 = True
+						if i["port"] == 443:
+							skip_443 = True
+				if not skip_80:
+					security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=80,ToPort=80)
+
+				if not skip_443:
+					security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=443,ToPort=443)
+
+
+	except ClientError as e:
+		print(e)
 
 
 
