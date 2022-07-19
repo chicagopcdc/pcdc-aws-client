@@ -21,6 +21,10 @@ class BotoManager(object):
     URL_EXPIRATION_MAX = 86400  # 1 day
 
     def __init__(self, config, logger):
+        """
+        need config which includes aws access and secret access keys and other information like region
+        depending on what aws tools are going to be used. 
+        """
         self.config = config
         self.logger = logger
         if  'aws_session_token' in config:
@@ -48,6 +52,8 @@ class BotoManager(object):
 
     def delete_data_file(self, bucket, prefix):
         """
+        delete a file from a s3 bucket need bucket and file path
+
         We use buckets with versioning disabled.
 
         See AWS docs here:
@@ -84,6 +90,9 @@ class BotoManager(object):
             return ("Unable to delete data file.", 500)
 
     def assume_role(self, role_arn, duration_seconds, config=None):
+        """
+        allow user to change aws roles for some time
+        """
         assert (
             duration_seconds
         ), 'assume_role() cannot be called without "duration_seconds" parameter; please check your "expires_in" parameters'
@@ -145,6 +154,9 @@ class BotoManager(object):
 
 
     def get_bucket_region(self, bucket, config):
+        """
+        get region for a specfic aws bucket
+        """
         try:
             if "aws_access_key_id" in config:
                 self.s3_client = client("s3", **config)
@@ -195,6 +207,9 @@ class BotoManager(object):
             raise UserError("Fail to add user to group: {}".format(ex))
 
     def get_user_group(self, group_names):
+        """
+        return name of groups that exist from group_names
+        """
         try:
             groups = self.iam.list_groups()["Groups"]
             res = {}
@@ -207,6 +222,9 @@ class BotoManager(object):
         return res
 
     def create_user_group(self, group_name, path=None):
+        """
+        create a group
+        """
         try:
             group = self.iam.create_group(GroupName=group_name)["Group"]
             self.__create_policy__(
@@ -375,22 +393,6 @@ class BotoManager(object):
             )
             raise InternalError(
                 "Can not complete multipart upload for {}. Detail {}".format(key, error)
-            )
-
-    #fence\blueprints\data\multipart_upload.py
-    def generate_presigned_url_for_uploading_part(self, bucket, key, uploadId, partNumber, region, expires):
-        url = "https://{}.s3.amazonaws.com/{}".format(bucket, key)
-        additional_signed_qs = {"partNumber": str(partNumber), "uploadId": uploadId}
-
-        try:
-            return generate_aws_presigned_url(
-                url, "PUT", self.config, "s3", region, expires, additional_signed_qs
-            )
-        except Exception as e:
-            raise InternalError(
-                "Can not generate presigned url for part number {} of key {}. Detail {}".format(
-                    partNumber, key, e
-                )
             )
 
 
