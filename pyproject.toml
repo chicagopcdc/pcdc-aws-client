@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "aws_client"
+name = "pcdc-aws-client"
 version = "0.1.0"
 description = "aws client"
-authors = ["Your Name <you@example.com>"]
+authors = ["Paul Murdoch <paulmurdoch19@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
