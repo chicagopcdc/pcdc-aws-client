@@ -275,7 +275,7 @@ class BotoManager(object):
     #gen3_scripts\slackUpdates\sendEmail.py
     #fence\utils.py
     def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET, CONFIGURATION_SET=None, config=None):
-        if conifg:
+        if config:
             self.ses_client = client('ses', **config)
         try:
 		#Provide the contents of the email.
@@ -394,6 +394,39 @@ class BotoManager(object):
             )
             raise InternalError(
                 "Can not complete multipart upload for {}. Detail {}".format(key, error)
+            )
+    
+    def generate_presigned_url_for_uploading_part(bucket, key, uploadId, partNumber, region, expires, credentials=None):
+        """
+        Generate presigned url for uploading object part given uploadId and part number
+
+        Args:
+            bucket(str): bucket
+            key(str): key
+            credentials(dict): dictionary of aws credentials
+            uploadId(str): uploadID of the multipart upload
+            partNumber(int): part number
+            region(str): bucket region
+            expires(int): expiration time
+
+        Returns:
+            presigned_url(str)
+        """
+        if not credentials:
+            credentials = self.config
+
+        url = "https://{}.s3.amazonaws.com/{}".format(bucket, key)
+        additional_signed_qs = {"partNumber": str(partNumber), "uploadId": uploadId}
+
+        try:
+            return generate_aws_presigned_url(
+                url, "PUT", credentials, "s3", region, expires, additional_signed_qs
+            )
+        except Exception as e:
+            raise InternalError(
+                "Can not generate presigned url for part number {} of key {}. Detail {}".format(
+                    partNumber, key, e
+                )
             )
 
     def restrict_sc(SECURITY_GROUP_ID):
