@@ -1,11 +1,14 @@
 from boto3 import client
 from boto3.exceptions import Boto3Error
-from aws_client.boto import BotoManager
+pcdc_aws_client = __import__('pcdc-aws-client\boto')
+#from pcdc_aws_client.boto import BotoManager
 import os
 import json
-import pytest
 from cdislogging import get_logger
 import datetime
+
+
+botomanager = pcdc_aws_client.BotoManager({}, logger=logger)
 
 def test_get_bucket_region(botomanager, bucket, config):
     assert '', botomanager.get_bucket_region(bucket, config)
