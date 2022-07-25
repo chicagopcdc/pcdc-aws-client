@@ -8,9 +8,9 @@ authors = ["Paul Murdoch <paulmurdoch19@gmail.com>"]
 python = "^3.7"
 boto3 = "^1.24.17"
 cdiserrors = "^1.0.0"
-cdispyutils = "^2.0.0"
 retry = "^0.9.2"
 python-dotenv = "^0.20.0"
+cdispyutils = "2.0.1"
 
 [tool.poetry.dev-dependencies]
 
