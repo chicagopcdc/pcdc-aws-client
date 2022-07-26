@@ -4,7 +4,7 @@ from boto3 import resource
 from boto3 import Session
 from boto3.exceptions import Boto3Error #, ClientError
 from botocore.exceptions import ClientError
-from errors import UserError, InternalError, UnavailableError, NotFound
+from .errors import UserError, InternalError, UnavailableError, NotFound
 import time
 from retry.api import retry_call
 from cdispyutils.hmac4 import generate_aws_presigned_url

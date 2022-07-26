@@ -115,8 +115,7 @@ def test_complete_multipart_upload(botomanager, url_test=False):
         part = botomanager.s3_client.upload_part(
             Body=data, Bucket=BUCKET, Key='hello', UploadId=uploadId, PartNumber=i)
         if url_test:
-            print(botomanager.generate_presigned_url_for_uploading_part(BUCKET, 'hello',
-                                                                  uploadId, i, REGION_NAME, 300))
+            print(botomanager.generate_presigned_url_for_uploading_part(BUCKET, 'hello', uploadId, i, REGION_NAME, 300))
         parts.append({"PartNumber": i, "ETag": part["ETag"]})
         uploaded_bytes += len(data)
         print("{0} of {1} uploaded ({2:.3f}%)".format(
