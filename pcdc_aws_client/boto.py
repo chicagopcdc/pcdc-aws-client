@@ -21,6 +21,10 @@ class BotoManager(object):
     URL_EXPIRATION_MAX = 86400  # 1 day
 
     def __init__(self, config, logger):
+        """
+        need config which includes aws access and secret access keys and other information like region
+        depending on what aws tools are going to be used. 
+        """
         self.config = config
         self.logger = logger
         if  'aws_session_token' in config:
@@ -48,6 +52,8 @@ class BotoManager(object):
 
     def delete_data_file(self, bucket, prefix):
         """
+        delete a file from a s3 bucket need bucket and file path
+
         We use buckets with versioning disabled.
 
         See AWS docs here:
@@ -84,6 +90,9 @@ class BotoManager(object):
             return ("Unable to delete data file.", 500)
 
     def assume_role(self, role_arn, duration_seconds, config=None):
+        """
+        allow user to change aws roles for some time
+        """
         assert (
             duration_seconds
         ), 'assume_role() cannot be called without "duration_seconds" parameter; please check your "expires_in" parameters'
@@ -145,6 +154,9 @@ class BotoManager(object):
 
 
     def get_bucket_region(self, bucket, config):
+        """
+        get region for a specfic aws bucket
+        """
         try:
             if "aws_access_key_id" in config:
                 self.s3_client = client("s3", **config)
@@ -195,6 +207,9 @@ class BotoManager(object):
             raise UserError("Fail to add user to group: {}".format(ex))
 
     def get_user_group(self, group_names):
+        """
+        return name of groups that exist from group_names
+        """
         try:
             groups = self.iam.list_groups()["Groups"]
             res = {}
@@ -207,6 +222,9 @@ class BotoManager(object):
         return res
 
     def create_user_group(self, group_name, path=None):
+        """
+        create a group
+        """
         try:
             group = self.iam.create_group(GroupName=group_name)["Group"]
             self.__create_policy__(
@@ -256,8 +274,9 @@ class BotoManager(object):
     # #gen3_scripts\check_vpn_restricted\sendEmail.py
     #gen3_scripts\slackUpdates\sendEmail.py
     #fence\utils.py
-    def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET, CONFIGURATION_SET=None):
-        
+    def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET, CONFIGURATION_SET=None, config=None):
+        if config:
+            self.ses_client = client('ses', **config)
         try:
 		#Provide the contents of the email.
             response = self.ses_client.send_email(
@@ -376,15 +395,32 @@ class BotoManager(object):
             raise InternalError(
                 "Can not complete multipart upload for {}. Detail {}".format(key, error)
             )
+    
+    def generate_presigned_url_for_uploading_part(bucket, key, uploadId, partNumber, region, expires, credentials=None):
+        """
+        Generate presigned url for uploading object part given uploadId and part number
 
-    #fence\blueprints\data\multipart_upload.py
-    def generate_presigned_url_for_uploading_part(self, bucket, key, uploadId, partNumber, region, expires):
+        Args:
+            bucket(str): bucket
+            key(str): key
+            credentials(dict): dictionary of aws credentials
+            uploadId(str): uploadID of the multipart upload
+            partNumber(int): part number
+            region(str): bucket region
+            expires(int): expiration time
+
+        Returns:
+            presigned_url(str)
+        """
+        if not credentials:
+            credentials = self.config
+
         url = "https://{}.s3.amazonaws.com/{}".format(bucket, key)
         additional_signed_qs = {"partNumber": str(partNumber), "uploadId": uploadId}
 
         try:
             return generate_aws_presigned_url(
-                url, "PUT", self.config, "s3", region, expires, additional_signed_qs
+                url, "PUT", credentials, "s3", region, expires, additional_signed_qs
             )
         except Exception as e:
             raise InternalError(
@@ -393,6 +429,56 @@ class BotoManager(object):
                 )
             )
 
+    def restrict_sc(SECURITY_GROUP_ID):
+        security_group = self.ec2_resource.SecurityGroup(SECURITY_GROUP_ID)
+        try:
+            response = self.ec2_client.describe_security_groups(GroupIds=[SECURITY_GROUP_ID])
+            #print(response)
+            ip_dict = {}
+            for sc in response["SecurityGroups"]:
+                for p in sc["IpPermissions"]:
+                    #print(p)
+                    for ip in p["IpRanges"]:
+                        #print(ip)
+                        if ip["CidrIp"] not in ip_dict:
+                            ip_dict[ip["CidrIp"]] = []
+                        ip_dict[ip["CidrIp"]].append({"protocol": p["IpProtocol"], "port": p["FromPort"]})
+
+            # print(ip_dict)
+            # {'0.0.0.0/0': [{'protocol': 'tcp', 'port': 80}, {'protocol': 'icmp', 'port': 3}, {'protocol': 'tcp', 'port': 443}]}
+
+            # REMOVE HTTP OPEN ACCESS
+            if "0.0.0.0/0" in ip_dict:
+                        ip_extract = [i for i in ip_dict["0.0.0.0/0"] if i["protocol"] == "tcp" and (i["port"] == 80 or i["port"] == 443)]
+                        for i in ip_extract:
+                                security_group.revoke_ingress(IpProtocol=i["protocol"], CidrIp="0.0.0.0/0", FromPort=i["port"], ToPort=i["port"])
+                                # print(i)
+
+            # ADD LIMITED HTTP ACCESS BY UCHCIAGO VPN 
+            ips = ["205.208.0.0/17", "128.135.0.0/16", "165.68.0.0/16"]
+            for ip in ips:
+                if ip not in ip_dict:
+                    security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=80,ToPort=80)
+                    security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=443,ToPort=443)
+                    # print(ip)
+                else:
+                    skip_80 = False
+                    skip_443 = False
+                    for i in ip_dict[ip]:
+                        if i["protocol"] == "tcp":
+                            if i["port"] == 80:
+                                skip_80 = True
+                            if i["port"] == 443:
+                                skip_443 = True
+                    if not skip_80:
+                        security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=80,ToPort=80)
+
+                    if not skip_443:
+                        security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=443,ToPort=443)
+
+
+        except ClientError as e:
+            print(e)
 
 
 
