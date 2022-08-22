@@ -1,15 +1,14 @@
 import uuid
+import json, requests, tempfile
 from boto3 import client
 from boto3 import resource
 from boto3 import Session
 from boto3.exceptions import Boto3Error #, ClientError
 from botocore.exceptions import ClientError
-from errors import UserError, InternalError, UnavailableError, NotFound
+from .errors import UserError, InternalError, UnavailableError, NotFound
 import time
 from retry.api import retry_call
 from cdispyutils.hmac4 import generate_aws_presigned_url
-
-
 
 
 class BotoManager(object):
@@ -480,10 +479,71 @@ class BotoManager(object):
         except ClientError as e:
             print(e)
 
+    def get_object(self, bucket, key, expires, config): 
+        """
+        Args:
+            bucket (str): bucket name
+            key (str): key in bucket
+            expires (int): presigned URL expiration time, in seconds
+            config (dict): additional parameters if necessary (e.g. updating access key)
+        """
+        try:
+            url = self.presigned_url(bucket, key, expires, [])
+        except Exception as ex:
+            self.logger.exception(ex)
+            raise InternalError(f"Failed to get pre-signed url for get_object: {ex}")
 
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as ex:
+            self.logger.info(
+                "HTTP Error {} fetching bucket {} key {}".format(
+                    ex, bucket, key
+                )
+            )
+            raise NotFound("Failed to get object: {} from bucket: {} exception: {}".format(key, bucket, ex))
+        except Exception as ex:
+            self.logger.exception(ex)
+            raise InternalError("Failed to get object: {} from bucket: {} exception: {}".format(key, bucket, ex))
 
+        return response.json()
 
+    def put_object(self, bucket, key, expires, config, contents): 
+        """
+        This function creates and uploads string or json to an s3 bucket 
+        Args:
+            bucket (str): bucket name
+            key (str): key in bucket
+            expires (int): presigned URL expiration time, in seconds
+            config (dict): additional parameters if necessary (e.g. updating access key)
+            contents: text or json content
+        """
+        try:
+            url_info = self.s3_client.generate_presigned_post(Bucket = bucket, Key = key, ExpiresIn = 30)
+        except Exception as ex:
+            self.logger.exception(ex)
+            raise InternalError("Failed to generate presigned post url: {}".format(ex))
 
+        with tempfile.NamedTemporaryFile(mode="w+") as f:
+            if type(contents) is str:
+                f.write(contents)
+            else:
+                json.dump(contents, f)
+            f.flush()
+            f.seek(0)
+            try:
+                post_url = url_info['url']
+                data = url_info['fields']
+                response = requests.post(post_url, data, files={'file':f})
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as ex:
+                self.logger.info(
+                    "HTTP Error {} fetching bucket {} key {}".format(
+                        ex, bucket, key
+                    )
+                )
+                raise InternalError("Failed to put object: {} in bucket: {} exception: {}".format(key, bucket, ex))
 
-
-    
+            except Exception as ex:
+                raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
