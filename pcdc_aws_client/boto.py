@@ -453,8 +453,8 @@ class BotoManager(object):
                                 security_group.revoke_ingress(IpProtocol=i["protocol"], CidrIp="0.0.0.0/0", FromPort=i["port"], ToPort=i["port"])
                                 # print(i)
 
-            # ADD LIMITED HTTP ACCESS BY UCHCIAGO VPN 
-            ips = ["205.208.0.0/17", "128.135.0.0/16", "165.68.0.0/16"]
+            # ADD LIMITED HTTP ACCESS BY UCHICAGO VPN and ETL VM
+            ips = ["205.208.0.0/17", "128.135.0.0/16", "165.68.0.0/16", "3.89.11.254/32"]
             for ip in ips:
                 if ip not in ip_dict:
                     security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=80,ToPort=80)
