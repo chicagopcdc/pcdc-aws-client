@@ -428,7 +428,7 @@ class BotoManager(object):
                 )
             )
 
-    def restrict_sc(SECURITY_GROUP_ID):
+    def restrict_sc(self, SECURITY_GROUP_ID):
         security_group = self.ec2_resource.SecurityGroup(SECURITY_GROUP_ID)
         try:
             response = self.ec2_client.describe_security_groups(GroupIds=[SECURITY_GROUP_ID])
