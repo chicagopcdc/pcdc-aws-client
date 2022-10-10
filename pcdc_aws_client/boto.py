@@ -150,8 +150,6 @@ class BotoManager(object):
         # s3_client = boto3.client('s3',region_name="ap-south-1",config=boto3.session.Config(signature_version='s3v4',))
         # s3_client.generate_presigned_url('get_object', Params={'Bucket': bucket_name, 'Key': object_name}, ExpiresIn=expiration)
 
-
-
     def get_bucket_region(self, bucket, config):
         """
         get region for a specfic aws bucket
@@ -270,7 +268,7 @@ class BotoManager(object):
             raise UserError("Fail to create policy: {}".format(ex))
         return policy
     
-    # #gen3_scripts\check_vpn_restricted\sendEmail.py
+    #gen3_scripts\check_vpn_restricted\sendEmail.py
     #gen3_scripts\slackUpdates\sendEmail.py
     #fence\utils.py
     def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET, CONFIGURATION_SET=None, config=None):
@@ -428,7 +426,7 @@ class BotoManager(object):
                 )
             )
 
-    def restrict_sc(self, SECURITY_GROUP_ID):
+    def restrict_sc(self, SECURITY_GROUP_ID, restricted_ips):
         security_group = self.ec2_resource.SecurityGroup(SECURITY_GROUP_ID)
         try:
             response = self.ec2_client.describe_security_groups(GroupIds=[SECURITY_GROUP_ID])
@@ -454,8 +452,7 @@ class BotoManager(object):
                                 # print(i)
 
             # ADD LIMITED HTTP ACCESS BY UCHICAGO VPN and ETL VM
-            ips = ["205.208.0.0/17", "128.135.0.0/16", "165.68.0.0/16", "3.89.11.254/32"]
-            for ip in ips:
+            for ip in restricted_ips:
                 if ip not in ip_dict:
                     security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=80,ToPort=80)
                     security_group.authorize_ingress(IpProtocol="tcp",CidrIp=ip,FromPort=443,ToPort=443)
