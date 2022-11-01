@@ -128,7 +128,7 @@ class BotoManager(object):
         if "aws_access_key_id" in config:
             self.s3_client = client("s3", **config)
 
-        expires = int(expires) or self.URL_EXPIRATION_DEFAULT
+        expires = int(expires) if expires and int(expires) else self.URL_EXPIRATION_DEFAULT
         expires = min(expires, self.URL_EXPIRATION_MAX)
         params = {"Bucket": bucket, "Key": key}
         if method == "put_object":
@@ -479,7 +479,7 @@ class BotoManager(object):
         except ClientError as e:
             print(e)
 
-    def get_object(self, bucket, key, expires, config): 
+    def get_object(self, bucket, key, expires, config, returnJson=True): 
         """
         Args:
             bucket (str): bucket name
@@ -507,7 +507,10 @@ class BotoManager(object):
             self.logger.exception(ex)
             raise InternalError("Failed to get object: {} from bucket: {} exception: {}".format(key, bucket, ex))
 
-        return response.json()
+        if returnJson:
+            return response.json()
+        else:
+            return response
 
     def put_object(self, bucket, key, expires, config, contents): 
         """
