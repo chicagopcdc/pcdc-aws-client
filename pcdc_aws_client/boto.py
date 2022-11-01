@@ -26,10 +26,11 @@ class BotoManager(object):
         """
         self.config = config
         self.logger = logger
-        if  'aws_session_token' in config:
+
+        if  'aws_session_token' in config or 'profile_name' in config:
              self.session = Session(**config)
              self.s3_client = self.session.client('s3')
-             self.s3_resource = self.session.resource('s3', **config)
+             self.s3_resource = self.session.resource('s3')
              self.sts_client = self.session.client("sts")
              self.iam = self.session.client('iam')
         else:
@@ -37,7 +38,7 @@ class BotoManager(object):
             self.s3_resource = resource('s3', **config)
             self.sts_client = client("sts", **config)
             self.iam = client('iam', **config)
-        
+
         if 'region_name' in config:
             # self.sqs_client = client("sqs", **config)
             self.ses_client = client('ses', **config)
@@ -547,12 +548,9 @@ class BotoManager(object):
             except Exception as ex:
                 raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
 
-    def get_list_files_in_s3_folder(self, bucket_name, folder_path, config, uri_type="s3a"):
+    def get_list_files_in_s3_folder(self, bucket_name, folder_path, uri_type="s3a"):
         """
         """
-        if "profile_name" in config:
-                self.s3_resource = resource('s3', **config)
-
         bucket = self.s3_resource.Bucket(bucket_name)
 
         files = []
