@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pcdc-aws-client"
-version = "0.4.0"
+version = "0.4.1"
 description = "aws client"
 authors = ["Paul Murdoch <paulmurdoch19@gmail.com>"]
 
