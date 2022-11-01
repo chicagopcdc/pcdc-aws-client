@@ -34,6 +34,7 @@ class BotoManager(object):
              self.iam = self.session.client('iam')
         else:
             self.s3_client = client('s3', **config)
+            self.s3_resource = resource('s3', **config)
             self.sts_client = client("sts", **config)
             self.iam = client('iam', **config)
         
@@ -546,13 +547,16 @@ class BotoManager(object):
             except Exception as ex:
                 raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
 
-    def get_list_files_in_s3_folder(self, bucket_name, folder_path, uri_type="s3a"):
+    def get_list_files_in_s3_folder(self, bucket_name, folder_path, config, uri_type="s3a"):
         """
         """
-        my_bucket = self.s3_resource.Bucket(bucket_name)
+        if "profile_name" in config:
+                self.s3_resource = resource('s3', **config)
+
+        bucket = self.s3_resource.Bucket(bucket_name)
 
         files = []
-        for object_summary in my_bucket.objects.filter(Prefix=folder_path):
+        for object_summary in bucket.objects.filter(Prefix=folder_path):
             # print(object_summary.key)
             files.append(uri_type + "://" + bucket_name + "/" + object_summary.key)
 
