@@ -548,7 +548,7 @@ class BotoManager(object):
             except Exception as ex:
                 raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
 
-    def get_list_files_in_s3_folder(self, bucket_name, folder_path, config, uri_type="s3a"):
+    def get_list_files_in_s3_folder(self, bucket_name, folder_path, uri_type="s3a"):
         """
         """
         bucket = self.s3_resource.Bucket(bucket_name)
