@@ -558,6 +558,7 @@ class BotoManager(object):
         files = []
         for object_summary in bucket.objects.filter(Prefix=folder_path):
             # print(object_summary.key)
-            files.append(uri_type + "://" + bucket_name + "/" + object_summary.key)
+            # files.append(uri_type + "://" + bucket_name + "/" + object_summary.key)
+            files.append(object_summary.key)
 
         return files
