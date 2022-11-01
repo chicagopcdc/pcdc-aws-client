@@ -29,6 +29,7 @@ class BotoManager(object):
         if  'aws_session_token' in config:
              self.session = Session(**config)
              self.s3_client = self.session.client('s3')
+             self.s3_resource = self.session.resource('s3', **config)
              self.sts_client = self.session.client("sts")
              self.iam = self.session.client('iam')
         else:
@@ -544,3 +545,15 @@ class BotoManager(object):
 
             except Exception as ex:
                 raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
+
+    def get_list_files_in_s3_folder(self, bucket_name, folder_path, uri_type="s3a"):
+        """
+        """
+        my_bucket = self.s3_resource.Bucket(bucket_name)
+
+        files = []
+        for object_summary in my_bucket.objects.filter(Prefix=folder_path):
+            # print(object_summary.key)
+            files.append(uri_type + "://" + bucket_name + "/" + object_summary.key)
+
+        return files
