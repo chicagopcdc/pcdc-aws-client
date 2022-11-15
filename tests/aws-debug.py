@@ -91,7 +91,7 @@ def test_presigned_url(botomanager, bucket, config):
 
 
 def test_send_email(botomanager):
-    botomanager.send_email(EMAIL, EMAIL,'Test Email', 'This is a test', 'hello', 'ASCII')
+    botomanager.send_email(EMAIL, EMAIL,'Test Email', 'This is a test', 'ASCII')
 
 
 def test_initilize_multipart_upload(botomanager):
