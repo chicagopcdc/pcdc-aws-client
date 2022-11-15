@@ -1,14 +1,17 @@
-import uuid
-import json, requests, tempfile
-from boto3 import client
-from boto3 import resource
-from boto3 import Session
-from boto3.exceptions import Boto3Error #, ClientError
-from botocore.exceptions import ClientError
-from .errors import UserError, InternalError, UnavailableError, NotFound
+import json
+import tempfile
 import time
-from retry.api import retry_call
+import uuid
+
+import html2text
+import requests
+from boto3 import Session, client, resource
+from boto3.exceptions import Boto3Error  # , ClientError
+from botocore.exceptions import ClientError
 from cdispyutils.hmac4 import generate_aws_presigned_url
+from retry.api import retry_call
+
+from .errors import InternalError, NotFound, UnavailableError, UserError
 
 
 class BotoManager(object):
@@ -270,13 +273,25 @@ class BotoManager(object):
             self.logger.exception(ex)
             raise UserError("Fail to create policy: {}".format(ex))
         return policy
-    
-    #gen3_scripts\check_vpn_restricted\sendEmail.py
-    #gen3_scripts\slackUpdates\sendEmail.py
-    #fence\utils.py
-    def send_email(self, SENDER, RECIPIENT, SUBJECT, BODY_TEXT, BODY_HTML, CHARSET, CONFIGURATION_SET=None, config=None):
+
+    # gen3_scripts\check_vpn_restricted\sendEmail.py
+    # gen3_scripts\slackUpdates\sendEmail.py
+    # fence\utils.py
+    def send_email(
+        self,
+        SENDER,
+        RECIPIENT,
+        SUBJECT,
+        BODY_HTML,
+        CHARSET="UTF-8",
+        BODY_TEXT=None,
+        CONFIGURATION_SET=None,
+        config=None,
+    ):
         if config:
             self.ses_client = client('ses', **config)
+        if not BODY_TEXT:
+            BODY_TEXT = html2text.html2text(BODY_HTML)
         try:
 		#Provide the contents of the email.
             response = self.ses_client.send_email(
