@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pcdc-aws-client"
-version = "0.4.3"
+version = "1.0.0"
 description = "aws client"
 authors = ["Paul Murdoch <paulmurdoch19@gmail.com>"]
 
@@ -10,6 +10,7 @@ boto3 = "*"
 retry = "*"
 cdiserrors = "*"
 cdispyutils = "*"
+html2text = "*"
 
 [tool.poetry.dev-dependencies]
 python-dotenv = "^0.20.0"
