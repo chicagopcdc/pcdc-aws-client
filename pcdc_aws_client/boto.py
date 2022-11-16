@@ -292,13 +292,16 @@ class BotoManager(object):
             self.ses_client = client('ses', **config)
         if not BODY_TEXT:
             BODY_TEXT = html2text.html2text(BODY_HTML)
+        RECIPIENTS = []
+        if isinstance(RECIPIENT, list):
+            RECIPIENTS = RECIPIENT
+        else:
+            RECIPIENTS.append(RECIPIENT)
         try:
 		#Provide the contents of the email.
             response = self.ses_client.send_email(
                 Destination={
-                    'ToAddresses': [
-                        RECIPIENT,
-                    ],
+                    'ToAddresses': RECIPIENTS,
                 },
                 Message={
                     'Body': {
