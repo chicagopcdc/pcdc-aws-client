@@ -6,7 +6,7 @@ import uuid
 import html2text
 import requests
 from boto3 import Session, client, resource
-from boto3.exceptions import Boto3Error  # , ClientError
+from boto3.exceptions import Boto3Error
 from botocore.exceptions import ClientError
 from cdispyutils.hmac4 import generate_aws_presigned_url
 from retry.api import retry_call
@@ -36,11 +36,13 @@ class BotoManager(object):
              self.s3_resource = self.session.resource('s3')
              self.sts_client = self.session.client("sts")
              self.iam = self.session.client('iam')
+             self.secrets_client = self.session.client('secretsmanager', **config)
         else:
             self.s3_client = client('s3', **config)
             self.s3_resource = resource('s3', **config)
             self.sts_client = client("sts", **config)
             self.iam = client('iam', **config)
+            self.secrets_client = client('secretsmanager', **config)
 
         if 'region_name' in config:
             # self.sqs_client = client("sqs", **config)
@@ -581,3 +583,25 @@ class BotoManager(object):
             files.append(object_summary.key)
 
         return files
+
+    def get_secret(self, secret_name):
+        try:
+            get_secret_value_response = self.secrets_client.get_secret_value(
+                SecretId=secret_name
+            )
+        except ClientError as e:
+            # For a list of exceptions thrown, see
+            # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+            raise e
+
+        # Decrypts secret using the associated KMS key.
+        secret = get_secret_value_response['SecretString']
+        return secret
+
+
+
+
+
+
+
+
