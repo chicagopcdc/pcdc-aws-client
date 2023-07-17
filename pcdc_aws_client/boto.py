@@ -50,12 +50,14 @@ class BotoManager(object):
             self.ec2_client = client('ec2', **config)
             self.ec2_resource = resource('ec2', **config)
             self.logs_client = client('logs', **config)
+            self.batch_client = client('batch', **config)
         else:
             #self.sqs_client = None
             self.ses_client = None
             self.ec2_client = None
             self.ec2_resource = None
             self.logs_client = None
+            self.batch_client = None
 
     def delete_data_file(self, bucket, prefix):
         """
@@ -597,6 +599,19 @@ class BotoManager(object):
         # Decrypts secret using the associated KMS key.
         secret = get_secret_value_response['SecretString']
         return secret
+
+    def submit_batch_job(self, job_definition, job_name, job_ueue):
+        try:
+            response = self.batch_client.submit_job(
+                jobDefinition=job_definition,
+                jobName=job_name,
+                jobQueue=job_ueue,
+            )
+            print(response)
+        except ClientError as e:
+            raise e
+
+        return response
 
 
 
