@@ -600,12 +600,12 @@ class BotoManager(object):
         secret = get_secret_value_response['SecretString']
         return secret
 
-    def submit_batch_job(self, job_definition, job_name, job_ueue):
+    def submit_batch_job(self, job_definition, job_name, job_queue):
         try:
             response = self.batch_client.submit_job(
                 jobDefinition=job_definition,
                 jobName=job_name,
-                jobQueue=job_ueue,
+                jobQueue=job_queue,
             )
             print(response)
         except ClientError as e:
