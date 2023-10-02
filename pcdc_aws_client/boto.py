@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError
 from cdispyutils.hmac4 import generate_aws_presigned_url
 from retry.api import retry_call
 
-from errors import InternalError, NotFound, UnavailableError, UserError
+from .errors import InternalError, NotFound, UnavailableError, UserError
 
 
 class BotoManager(object):
