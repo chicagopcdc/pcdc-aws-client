@@ -30,16 +30,12 @@ class BotoManager(object):
         self.config = config
         self.logger = logger
 
-        self.secrets_client = None
-
         if  'aws_session_token' in config or 'profile_name' in config:
              self.session = Session(**config)
              self.s3_client = self.session.client('s3')
              self.s3_resource = self.session.resource('s3')
              self.sts_client = self.session.client("sts")
              self.iam = self.session.client('iam')
-             if 'region_name' in config: 
-                self.secrets_client = self.session.client('secretsmanager', **config)
         else:
             self.s3_client = client('s3', **config)
             self.s3_resource = resource('s3', **config)
@@ -53,8 +49,7 @@ class BotoManager(object):
             self.ec2_resource = resource('ec2', **config)
             self.logs_client = client('logs', **config)
             self.batch_client = client('batch', **config)
-            if not self.secrets_client:
-                self.secrets_client = client('secretsmanager', **config)
+            self.secrets_client = client('secretsmanager', **config)
         else:
             #self.sqs_client = None
             self.ses_client = None
@@ -62,6 +57,7 @@ class BotoManager(object):
             self.ec2_resource = None
             self.logs_client = None
             self.batch_client = None
+            self.secrets_client = None
 
     def delete_data_file(self, bucket, prefix):
         """
