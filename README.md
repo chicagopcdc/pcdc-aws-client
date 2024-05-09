@@ -62,7 +62,7 @@ The TEST_ROLE_ARN needs to have the following trust relationship defined under t
     ]
 }
 ```
-# To run tests: 
+To run tests: 
 
 ```
 $ python -m tests.aws-debug
