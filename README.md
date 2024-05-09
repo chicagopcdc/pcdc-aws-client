@@ -11,7 +11,7 @@ activate poetry virtual enviorment
 
 Create .env file with the following:
 
-'''
+```
 AWS_ACCESS_KEY=[access key for testing account in aws]
 AWS_SECRET_ACCESS_KEY=[secret for access key for testing account in aws]
 REGION_NAME=[region name]
@@ -24,10 +24,11 @@ AWS_SECRET_ACCESS_KEY_NO_PERMISSIONS=[ secret for no permissions user  * from AW
 TEST_ROLE_ARN="arn:aws:iam::494226486678:role/pcdc-aws-client-test-role"
 USER_NO_PERMISSIONS= [ no permissions user name - created in aws console ]
 EMAIL=[ valid email ]
-'''
+```
 
 The TEST_ROLE_ARN created via AWS console needs the following permissions:
-'''
+
+```
 {
 	"Version": "2012-10-17",
 	"Statement": [
@@ -42,10 +43,11 @@ The TEST_ROLE_ARN created via AWS console needs the following permissions:
 		}
 	]
 }
-'''
+```
 
 The TEST_ROLE_ARN needs to have the following trust relationship defined under the "trust relationship" tab:
-'''
+
+```
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -59,8 +61,9 @@ The TEST_ROLE_ARN needs to have the following trust relationship defined under t
         }
     ]
 }
-'''
+```
 # To run tests: 
-'''
+
+```
 $ python -m tests.aws-debug
-'''
+```
