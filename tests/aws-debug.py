@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_KEY')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 REGION_NAME = os.environ.get('REGION_NAME')
 BUCKET = os.environ.get('BUCKET')
 GROUP_1 = os.environ.get('GROUP_1')
@@ -33,12 +33,9 @@ def test_get_bucket_region(botomanager, bucket, config):
 def test_get_all_groups(botomanager, group_list):
     #list only has preexisting groups
     assert group_list == list(botomanager.get_all_groups(group_list).keys())
-    #need to check if it will add groups
-
 
 def test_get_user_group(botomanager, group_list):
     assert group_list == list(botomanager.get_user_group(group_list).keys())
-
 
 def test_add_user_to_group(botomanager, group, user):
     group = botomanager.get_all_groups(group)
@@ -70,24 +67,20 @@ def test_assume_role(botomanager_paul, botomanager_UserNoPrivileges,
 
 def test_delete_data_file(botomanager, bucket, prefix):
     dir = os.path.dirname(__file__)
-    hello_path = os.path.join(dir, 'testfiles\hello.txt')
+    hello_path = os.path.join(dir, 'testfiles/test_data_file.txt')
     botomanager.s3_client.upload_file(hello_path, 
-                                      bucket, 'hello.txt')
-    botomanager.delete_data_file(bucket, prefix='hello.txt')
-    """
-    test1_path = os.path.join(dir, 'testfiles\test-1.py')
-    botomanager.s3_client.upload_file(test1_path, 
-                                      bucket, 'test-1.py')
-    test2_path = os.path.join(dir, 'testfiles\test-1.py')
-    botomanager.s3_client.upload_file(test2_path, 
-                                      bucket, 'python/test-2.py')
-    botomanager.delete_data_file(bucket, prefix='python/test-1.py')
-    botomanager.delete_data_file(bucket, prefix='python/test-2.py')
-    """
+                                      bucket, 'test_data_file.txt')
+    botomanager.delete_data_file(bucket, prefix='test_data_file.txt')
+
+def test_get_put_object(botomanager, bucket, key, expires, config, contents):
+    botomanager.put_object(bucket, key, expires, config, contents)
+    test_obj = botomanager.get_object(bucket, key, expires, config, contents)
+    assert test_obj['test-put-obj-label'] == 'test value'
+    botomanager.delete_data_file(bucket, prefix=key)
 
 
 def test_presigned_url(botomanager, bucket, config):
-    print(botomanager.presigned_url(bucket, 'hello.txt', 1000, config))
+    print(botomanager.presigned_url(bucket, 'test_data_file.txt', 1000, config))
 
 
 def test_send_email(botomanager):
@@ -104,7 +97,7 @@ def test_complete_multipart_upload(botomanager, url_test=False):
     uploaded_bytes = 0
     part_bytes = int(15e6)
     dir = os.path.dirname(__file__)
-    hello_path = os.path.join(dir, 'testfiles\hello.txt')
+    hello_path = os.path.join(dir, 'testfiles/test_data_file.txt')
     total_bytes = os.stat(hello_path).st_size
     with open(hello_path, "rb") as f:
       i = 1
@@ -124,9 +117,6 @@ def test_complete_multipart_upload(botomanager, url_test=False):
         i += 1
     botomanager.complete_multipart_upload(BUCKET, 'hello', uploadId, parts, 1)
 
-def test_generate_presigned_url_for_uploading_part(botomanager):
-    test_complete_multipart_upload(botomanager, url_test=True)
-
 
 def main():
     logger = get_logger(__name__, log_level='info')
@@ -145,9 +135,7 @@ def main():
     else:
         logger.warning("Missing credentials for BotoManager, delivery of data will fail.")
     bucket = BUCKET
-    print(GROUP_1)
     group_list = [GROUP_1]
-
 
     test_get_bucket_region(test_botomanager, bucket, value)
     test_get_user_group(test_botomanager, group_list)
@@ -158,7 +146,7 @@ def main():
     #different user with no premissions
     config_test_assume_role=  {'aws_access_key_id': AWS_ACCESS_KEY_NO_PERMISSIONS,
                                'aws_secret_access_key': AWS_SECRET_ACCESS_KEY_NO_PERMISSIONS}
-    
+
     test_assume_role(test_botomanager, BotoManager(config_test_assume_role, logger=logger), 
                      config_test_assume_role)
     
@@ -167,7 +155,7 @@ def main():
     test_send_email(test_botomanager)
     test_initilize_multipart_upload(test_botomanager)
     test_complete_multipart_upload(test_botomanager)
-    test_generate_presigned_url_for_uploading_part(test_botomanager)
+    test_get_put_object(test_botomanager, bucket, 'test-put-obj-key', 300, config, {"test-put-obj-label":"test value"})
 
 if __name__ == '__main__':
     main()

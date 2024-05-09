@@ -150,16 +150,6 @@ class BotoManager(object):
             raise InternalError("Failed to get pre-signed url")
 
 
-        # import boto3
-        # AWS_S3_REGION = 'ap-south-1'
-        # AWS_S3_BUCKET_NAME = "my_s3_bucket"
-        # AWS_S3_FILE_NAME = "my-file.jpg"
-        # PRESIGNED_URL_EXPIRY = 100 # in seconds
-        # s3_client = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY_ID, region_name=AWS_S3_REGION, aws_secret_access_key=AWS_SECRET_ACCESS_KEY,)
-        # presigned_url = s3_client.generate_presigned_url('get_object',    Params={"Bucket": AWS_S3_BUCKET_NAME, "Key": AWS_S3_FILE_NAME}, ExpiresIn=PRESIGNED_URL_EXPIRY)
-        # s3_client = boto3.client('s3',region_name="ap-south-1",config=boto3.session.Config(signature_version='s3v4',))
-        # s3_client.generate_presigned_url('get_object', Params={'Bucket': bucket_name, 'Key': object_name}, ExpiresIn=expiration)
-
     def get_bucket_region(self, bucket, config):
         """
         get region for a specfic aws bucket
@@ -510,7 +500,7 @@ class BotoManager(object):
             config (dict): additional parameters if necessary (e.g. updating access key)
         """
         try:
-            url = self.presigned_url(bucket, key, expires, [])
+            url = self.presigned_url(bucket, key, expires, config)
         except Exception as ex:
             self.logger.exception(ex)
             raise InternalError(f"Failed to get pre-signed url for get_object: {ex}")
