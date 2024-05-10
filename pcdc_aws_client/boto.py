@@ -130,7 +130,7 @@ class BotoManager(object):
             config (dict): additional parameters if necessary (e.g. updating access key)
             method (str): "get_object" or "put_object" (ClientMethod argument to boto)
         """
-        if method not in ["get_object"]: #, "put_object"]:
+        if method not in ["get_object", "put_object"]:
             raise UserError("method {} not allowed".format(method))
         if "aws_access_key_id" in config:
             self.s3_client = client("s3", **config)
@@ -138,9 +138,17 @@ class BotoManager(object):
         expires = int(expires) if expires and int(expires) else self.URL_EXPIRATION_DEFAULT
         expires = min(expires, self.URL_EXPIRATION_MAX)
         params = {"Bucket": bucket, "Key": key}
+
+        if method == "get_object":
+            try:
+                response = self.s3_client.get_object(Bucket=bucket, Key=key)
+            except Exception as e:
+                self.logger.exception(e)
+                raise NotFound("Could not locate file")
+
         if method == "put_object":
             params["ServerSideEncryption"] = "AES256"
-        
+
         try:
             return self.s3_client.generate_presigned_url(
                 ClientMethod=method, Params=params, ExpiresIn=expires
