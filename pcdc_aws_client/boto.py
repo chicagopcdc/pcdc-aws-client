@@ -130,7 +130,7 @@ class BotoManager(object):
             config (dict): additional parameters if necessary (e.g. updating access key)
             method (str): "get_object" or "put_object" (ClientMethod argument to boto)
         """
-        if method not in ["get_object"]: #, "put_object"]:
+        if method not in ["get_object", "put_object"]:
             raise UserError("method {} not allowed".format(method))
         if "aws_access_key_id" in config:
             self.s3_client = client("s3", **config)
