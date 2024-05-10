@@ -138,9 +138,17 @@ class BotoManager(object):
         expires = int(expires) if expires and int(expires) else self.URL_EXPIRATION_DEFAULT
         expires = min(expires, self.URL_EXPIRATION_MAX)
         params = {"Bucket": bucket, "Key": key}
+
+        if method == "get_object":
+            try:
+                response = self.s3_client.get_object(Bucket=bucket, Key=key)
+            except Exception as e:
+                self.logger.exception(e)
+                raise NotFound("Could not locate file")
+
         if method == "put_object":
             params["ServerSideEncryption"] = "AES256"
-        
+
         try:
             return self.s3_client.generate_presigned_url(
                 ClientMethod=method, Params=params, ExpiresIn=expires
