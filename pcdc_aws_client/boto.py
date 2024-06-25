@@ -121,7 +121,7 @@ class BotoManager(object):
             self.logger.exception(ex)
             raise UnavailableError("Fail to reach AWS: {}".format(ex))
 
-    def presigned_url(self, bucket, key, expires, config, method="get_object"):
+    def presigned_url(self, bucket, key, expires, config, method="get_object", dummy_s3=False):
         """
         Args:
             bucket (str): bucket name
@@ -139,12 +139,14 @@ class BotoManager(object):
         expires = min(expires, self.URL_EXPIRATION_MAX)
         params = {"Bucket": bucket, "Key": key}
 
-        if method == "get_object":
-            try:
-                response = self.s3_client.get_object(Bucket=bucket, Key=key)
-            except Exception as e:
-                self.logger.exception(e)
-                raise NotFound("Could not locate file")
+        # check if object exists when not using dummy s3 bucket
+        if not dummy_s3:
+            if method == "get_object":
+                try:
+                    response = self.s3_client.get_object(Bucket=bucket, Key=key)
+                except Exception as e:
+                    self.logger.exception(e)
+                    raise NotFound("Could not locate file")
 
         if method == "put_object":
             params["ServerSideEncryption"] = "AES256"
