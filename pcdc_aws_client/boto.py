@@ -450,6 +450,23 @@ class BotoManager(object):
                     partNumber, key, e
                 )
             )
+    def get_squid_public_ips(self):
+        response = self.ec2_client.describe_instances(
+            Filters=[
+                {
+                    'Name': 'tag:Name',
+                    'Values': ['*squid*']
+                }
+            ]
+        )
+
+        public_ips = []
+        for reservation in response['Reservations']:
+            for instance in reservation['Instances']:
+                if 'PublicIpAddress' in instance:
+                    public_ips.append(instance['PublicIpAddress'] + '/32')
+
+        return public_ips
 
     def restrict_sc(self, SECURITY_GROUP_ID, restricted_ips):
         security_group = self.ec2_resource.SecurityGroup(SECURITY_GROUP_ID)
