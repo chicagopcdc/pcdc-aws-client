@@ -450,6 +450,46 @@ class BotoManager(object):
                     partNumber, key, e
                 )
             )
+
+    def get_vpc_nat_gateway_ips(self, vpc_name):
+        if not vpc_name:
+            self.logger.error("No VPC name provided")
+            return []
+        response = self.ec2_client.describe_vpcs(
+            Filters=[
+                {'Name': 'tag:Name', 'Values': [vpc_name]}
+            ]
+        )
+
+        # Check if the VPC was found
+        if not response['Vpcs']:
+            self.logger.info(f"VPC named {vpc_name} not found.")
+            return []
+        else:
+            vpc_id = response['Vpcs'][0]['VpcId']
+            self.logger.info(f"VPC ID for {vpc_name}: {vpc_id}")
+
+            # Describe NAT Gateways for the specified VPC
+            nat_gateways_response = self.ec2_client.describe_nat_gateways(
+                Filters=[
+                    {'Name': 'vpc-id', 'Values': [vpc_id]}
+                ]
+            )
+        public_ips = []
+        # Check if any NAT Gateways were found
+        if not nat_gateways_response['NatGateways']:
+            self.logger.info("No NAT Gateways found in VPC {vpc_name}.")
+        else:
+            for nat_gateway in nat_gateways_response['NatGateways']:
+                nat_gateway_id = nat_gateway['NatGatewayId']
+                for address in nat_gateway['NatGatewayAddresses']:
+                    public_ip = address.get('PublicIp')
+                    if public_ip:
+                        self.logger.info(f"NAT Gateway ID: {nat_gateway_id}, Public IP: {public_ip}")
+                        public_ips.append(public_ip + '/32')
+        
+        return public_ips
+    
     def get_squid_public_ips(self):
         response = self.ec2_client.describe_instances(
             Filters=[
