@@ -490,12 +490,12 @@ class BotoManager(object):
         
         return public_ips
     
-    def get_squid_public_ips(self):
+    def get_ec2_public_ips_by_name(self, name):
         response = self.ec2_client.describe_instances(
             Filters=[
                 {
                     'Name': 'tag:Name',
-                    'Values': ['*squid*']
+                    'Values': [f'*{name}*']
                 }
             ]
         )
