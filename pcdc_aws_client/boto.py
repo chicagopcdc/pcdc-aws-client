@@ -289,6 +289,7 @@ class BotoManager(object):
         BODY_HTML,
         CHARSET="UTF-8",
         BODY_TEXT=None,
+        CC_RECIPIENTS=None,
         CONFIGURATION_SET=None,
         config=None,
     ):
@@ -301,11 +302,19 @@ class BotoManager(object):
             RECIPIENTS = RECIPIENT
         else:
             RECIPIENTS.append(RECIPIENT)
+
+        CC_RECIPIENTS_LIST = []
+        if CC_RECIPIENTS:
+            if isinstance(CC_RECIPIENTS, list):
+                CC_RECIPIENTS_LIST = CC_RECIPIENTS
+            else:
+                CC_RECIPIENTS_LIST.append(CC_RECIPIENTS)
         try:
 		#Provide the contents of the email.
             response = self.ses_client.send_email(
                 Destination={
                     'ToAddresses': RECIPIENTS,
+                    'CcAddresses': CC_RECIPIENTS_LIST,
                 },
                 Message={
                     'Body': {
@@ -334,6 +343,7 @@ class BotoManager(object):
         else:
             print("Email sent! Message ID:"),
             print(response['MessageId'])
+
 
     # #gen3_scripts\cloudwatch\get_logs_survival.py
     def get_logs(self, env_group_name, epoch_start, epoch_end, queryString):
