@@ -1,24 +1,19 @@
 from cdislogging import get_logger
-
+import re
 
 logger = get_logger(__name__)
 
 
 def get_s3_key_and_bucket(url):
-	bucket_value_list = url.split(".s3.amazonaws.com/",1)
-	if len(bucket_value_list) != 2:
-		logger.info("Error in extracting the key information")
+	pattern = r"https://([^.]+)\.s3(?:\.[^.]*)?\.amazonaws\.com/(.+)"
+
+	match = re.match(pattern, url)
+	if not match:
+		logger.error("Error in extracting bucket and key from URL.")
 		return None
 
-	key = bucket_value_list[1]
-
-	bucket_list = bucket_value_list[0].split("https://",1)
-	if len(bucket_list) != 2:
-		logger.info("Error in extracting the bucket information")
-		return None
-
-	bucket = bucket_list[1]
+	bucket = match.group(1)
+	key = match.group(2)
 
 	return {"key": key, "bucket": bucket}
-
     
