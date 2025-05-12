@@ -303,6 +303,9 @@ class BotoManager(object):
         else:
             RECIPIENTS.append(RECIPIENT)
 
+        #CC_RECIPIENTS is either a string of one email of a list of strings containing emails
+        #1) CC_RECIPIENTS = "email1@uchicago"
+        #2) CC_RECIPIENTS = ["email1@uchicago", "email2@uchicago"]
         CC_RECIPIENTS_LIST = []
         if CC_RECIPIENTS:
             if isinstance(CC_RECIPIENTS, list):
