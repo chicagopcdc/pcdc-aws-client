@@ -50,6 +50,7 @@ class BotoManager(object):
             self.logs_client = client('logs', **config)
             self.batch_client = client('batch', **config)
             self.secrets_client = client('secretsmanager', **config)
+            self.ssm_client = client('ssm', **config) 
         else:
             #self.sqs_client = None
             self.ses_client = None
@@ -58,6 +59,7 @@ class BotoManager(object):
             self.logs_client = None
             self.batch_client = None
             self.secrets_client = None
+            self.ssm_client = None
 
     def delete_data_file(self, bucket, prefix):
         """
@@ -669,6 +671,16 @@ class BotoManager(object):
         # Decrypts secret using the associated KMS key.
         secret = get_secret_value_response['SecretString']
         return secret
+
+    def get_param_from_ssm(self, parameter_name):
+        try:
+            # Get credentials from AWS SSM Parameter Store
+            param = self.ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
+        except ClientError as e:
+            raise e
+
+        param = json.loads(param["Parameter"]["Value"])
+        return param
 
     def submit_batch_job(self, job_definition, job_name, job_queue, container_overrides={}):
         try:
