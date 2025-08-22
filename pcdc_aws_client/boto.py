@@ -22,42 +22,62 @@ class BotoManager(object):
     URL_EXPIRATION_DEFAULT = 1800  # 30 minutes
     URL_EXPIRATION_MAX = 86400  # 1 day
 
-    def __init__(self, config, logger):
+    def __init__(self, config=None, logger=None):
         """
         need config which includes aws access and secret access keys and other information like region
         depending on what aws tools are going to be used. 
         """
-        self.config = config
         self.logger = logger
+        self.config = config or {}
 
-        if  'aws_session_token' in config or 'profile_name' in config:
-             self.session = Session(**config)
-             self.s3_client = self.session.client('s3')
-             self.s3_resource = self.session.resource('s3')
-             self.sts_client = self.session.client("sts")
-             self.iam = self.session.client('iam')
-        else:
-            self.s3_client = client('s3', **config)
-            self.s3_resource = resource('s3', **config)
-            self.sts_client = client("sts", **config)
-            self.iam = client('iam', **config)
+        self.session = self._create_session(self.config)
+        self._init_clients()
 
-        if 'region_name' in config:
-            # self.sqs_client = client("sqs", **config)
-            self.ses_client = client('ses', **config)
-            self.ec2_client = client('ec2', **config)
-            self.ec2_resource = resource('ec2', **config)
-            self.logs_client = client('logs', **config)
-            self.batch_client = client('batch', **config)
-            self.secrets_client = client('secretsmanager', **config)
-        else:
-            #self.sqs_client = None
-            self.ses_client = None
-            self.ec2_client = None
-            self.ec2_resource = None
-            self.logs_client = None
-            self.batch_client = None
-            self.secrets_client = None
+    def _create_session(self, config):
+        """
+        Create a boto3 Session based on available config:
+        - profile_name: uses named profile from ~/.aws/config
+        - aws_access_key_id & aws_secret_access_key: direct credentials
+        - fallback to default session (e.g., IAM role)
+        """
+        try:
+            if 'profile_name' in config:
+                return Session(profile_name=config['profile_name'], region_name=config.get('region_name'))
+            elif 'aws_access_key_id' in config and 'aws_secret_access_key' in config:
+                return Session(
+                    aws_access_key_id=config['aws_access_key_id'],
+                    aws_secret_access_key=config['aws_secret_access_key'],
+                    aws_session_token=config.get('aws_session_token'),  # optional
+                    region_name=config.get('region_name')
+                )
+            else:
+                return Session(region_name=config.get('region_name'))
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Failed to create AWS session: {e}")
+            raise
+
+    def _init_clients(self):
+        self.s3_client = self.session.client('s3')
+        self.s3_resource = self.session.resource('s3')
+        self.sts_client = self.session.client("sts")
+        self.iam = self.session.client('iam')
+        self.ses_client = self.session.client('ses')
+        self.ec2_client = self.session.client('ec2')
+        self.ec2_resource = self.session.resource('ec2')
+        self.logs_client = self.session.client('logs')
+        self.batch_client = self.session.client('batch')
+        self.secrets_client = self.session.client('secretsmanager')
+        self.ssm_client = self.session.client('ssm')
+
+    def get_client(self, service_name):
+        """Dynamically get a client for any AWS service."""
+        return self.session.client(service_name)
+
+    def get_resource(self, service_name):
+        """Dynamically get a resource for any AWS service."""
+        return self.session.resource(service_name)
+
 
     def delete_data_file(self, bucket, prefix):
         """
@@ -669,6 +689,16 @@ class BotoManager(object):
         # Decrypts secret using the associated KMS key.
         secret = get_secret_value_response['SecretString']
         return secret
+
+    def get_param_from_ssm(self, parameter_name):
+        try:
+            # Get credentials from AWS SSM Parameter Store
+            param = self.ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
+        except ClientError as e:
+            raise e
+
+        param = json.loads(param["Parameter"]["Value"])
+        return param
 
     def submit_batch_job(self, job_definition, job_name, job_queue, container_overrides={}):
         try:

@@ -4,7 +4,23 @@ AWS client to communicate with S3, SES, iam, sts, ec2, and logs.
 to install aws client:
 pip install git+http://github.com/chicagopcdc/pcdc-aws-client.git@pcdc_dev#egg=pcdc_aws_client
 
-from pcdc_aws_client.boto import BotoManager
+## Usage
+`from pcdc_aws_client.boto import BotoManager`
+
+- For IAM role, or ENV var credentials:
+`manager = BotoManager({'region_name': 'us-east-1'}, logger=my_logger)`
+
+- with AWS profile:
+`manager = BotoManager({'profile_name': 'dev', 'region_name': 'us-west-2'}, logger=my_logger)`
+
+- with credentials:
+```
+manager = BotoManager({
+    'aws_access_key_id': 'AKIA...',
+    'aws_secret_access_key': 'secret...',
+    'region_name': 'us-east-1'
+})
+```
 
 ## Run tests:
 activate poetry virtual enviorment
