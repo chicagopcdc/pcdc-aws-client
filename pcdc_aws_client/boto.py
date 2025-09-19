@@ -2,6 +2,7 @@ import json
 import tempfile
 import time
 import uuid
+import csv
 from io import StringIO
 
 import html2text
