@@ -667,11 +667,11 @@ class BotoManager(object):
 
     def load_csv_from_s3(self, s3_bucket_name, s3_key="cache/cache.csv"):
         try:
-            obj = s3_client.get_object(Bucket=s3_bucket_name, Key=s3_key)
+            obj = self.s3_client.get_object(Bucket=s3_bucket_name, Key=s3_key)
             content = obj["Body"].read().decode("utf-8")
             reader = csv.DictReader(StringIO(content))
             return list(reader)
-        except s3_client.exceptions.NoSuchKey:
+        except self.s3_client.exceptions.NoSuchKey:
             print(f"No cache found at s3://{s3_bucket_name}/{s3_key}")
             return []
 
@@ -687,7 +687,7 @@ class BotoManager(object):
         writer.writerows(rows)
 
         # Upload string content to S3
-        s3_client.put_object(Bucket=s3_bucket_name, Key=s3_key, Body=output.getvalue().encode("utf-8"))
+        self.s3_client.put_object(Bucket=s3_bucket_name, Key=s3_key, Body=output.getvalue().encode("utf-8"))
         print(f"Uploaded {len(rows)} rows directly to s3://{s3_bucket_name}/{s3_key}")
 
     def get_list_files_in_s3_folder(self, bucket_name, folder_path, uri_type="s3a"):
