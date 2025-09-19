@@ -665,7 +665,7 @@ class BotoManager(object):
                 raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
 
 
-    def load_csv_from_s3(s3_bucket_name, s3_key="cache/cache.csv"):
+    def load_csv_from_s3(self, s3_bucket_name, s3_key="cache/cache.csv"):
         try:
             obj = s3_client.get_object(Bucket=s3_bucket_name, Key=s3_key)
             content = obj["Body"].read().decode("utf-8")
@@ -675,7 +675,7 @@ class BotoManager(object):
             print(f"No cache found at s3://{s3_bucket_name}/{s3_key}")
             return []
 
-    def upload_csv_content_to_s3(rows, s3_bucket_name, s3_key="cache/cache.csv"):
+    def upload_csv_content_to_s3(self, rows, s3_bucket_name, s3_key="cache/cache.csv"):
         """
         Uploads a list of dicts as CSV directly to S3 without creating a local file.
         """
