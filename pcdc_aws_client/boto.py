@@ -691,6 +691,29 @@ class BotoManager(object):
         self.s3_client.put_object(Bucket=s3_bucket_name, Key=s3_key, Body=output.getvalue().encode("utf-8"))
         print(f"Uploaded {len(rows)} rows directly to s3://{s3_bucket_name}/{s3_key}")
 
+    def get_json_from_s3(self, bucket, key):
+        """Retrieve JSON file from S3 and parse it"""
+        try:
+            obj = self.s3_client.get_object(Bucket=bucket, Key=key)
+            body = obj["Body"].read().decode("utf-8")
+            return json.loads(body)
+        except self.s3_client.exceptions.NoSuchKey:
+            self.logger.warning(f"No object found at s3://{bucket}/{key}")
+            return None
+        except Exception as e:
+            self.logger.error(f"Error getting JSON from s3://{bucket}/{key}: {e}")
+            raise
+
+    def put_json_to_s3(self, bucket, key, data):
+        """Save JSON file to S3"""
+        try:
+            body = json.dumps(data, indent=4).encode("utf-8")
+            self.s3_client.put_object(Bucket=bucket, Key=key, Body=body)
+            self.logger.info(f"Saved JSON to s3://{bucket}/{key}")
+        except Exception as e:
+            self.logger.error(f"Error saving JSON to s3://{bucket}/{key}: {e}")
+            raise
+
     def get_list_files_in_s3_folder(self, bucket_name, folder_path, uri_type="s3a"):
         """
         """
