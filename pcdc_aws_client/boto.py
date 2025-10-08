@@ -2,6 +2,8 @@ import json
 import tempfile
 import time
 import uuid
+import csv
+from io import StringIO
 
 import html2text
 import requests
@@ -662,6 +664,55 @@ class BotoManager(object):
 
             except Exception as ex:
                 raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
+
+
+    def load_csv_from_s3(self, s3_bucket_name, s3_key="cache/cache.csv"):
+        try:
+            obj = self.s3_client.get_object(Bucket=s3_bucket_name, Key=s3_key)
+            content = obj["Body"].read().decode("utf-8")
+            reader = csv.DictReader(StringIO(content))
+            return list(reader)
+        except self.s3_client.exceptions.NoSuchKey:
+            print(f"No cache found at s3://{s3_bucket_name}/{s3_key}")
+            return []
+
+    def upload_csv_content_to_s3(self, rows, s3_bucket_name, s3_key="cache/cache.csv"):
+        """
+        Uploads a list of dicts as CSV directly to S3 without creating a local file.
+        """
+        # Write CSV to an in-memory string
+        output = StringIO()
+        fieldnames = rows[0].keys() if rows else ["user_id", "timestamp", "raw"]
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+        # Upload string content to S3
+        self.s3_client.put_object(Bucket=s3_bucket_name, Key=s3_key, Body=output.getvalue().encode("utf-8"))
+        print(f"Uploaded {len(rows)} rows directly to s3://{s3_bucket_name}/{s3_key}")
+
+    def get_json_from_s3(self, bucket, key):
+        """Retrieve JSON file from S3 and parse it"""
+        try:
+            obj = self.s3_client.get_object(Bucket=bucket, Key=key)
+            body = obj["Body"].read().decode("utf-8")
+            return json.loads(body)
+        except self.s3_client.exceptions.NoSuchKey:
+            self.logger.warning(f"No object found at s3://{bucket}/{key}")
+            return None
+        except Exception as e:
+            self.logger.error(f"Error getting JSON from s3://{bucket}/{key}: {e}")
+            raise
+
+    def put_json_to_s3(self, bucket, key, data):
+        """Save JSON file to S3"""
+        try:
+            body = json.dumps(data, indent=4).encode("utf-8")
+            self.s3_client.put_object(Bucket=bucket, Key=key, Body=body)
+            self.logger.info(f"Saved JSON to s3://{bucket}/{key}")
+        except Exception as e:
+            self.logger.error(f"Error saving JSON to s3://{bucket}/{key}: {e}")
+            raise
 
     def get_list_files_in_s3_folder(self, bucket_name, folder_path, uri_type="s3a"):
         """
