@@ -120,28 +120,36 @@ class BotoManager(object):
             self.logger.error("Failed to delete file: {}".format(str(e)))
             return ("Unable to delete data file.", 500)
 
-    def assume_role(self, role_arn, duration_seconds, config=None):
+            
+    def assume_role(self, role_arn, duration_seconds=None, config=None, role_session_name="gen3"):
         """
-        allow user to change aws roles for some time
+        Allow user to assume an AWS role.
+        If duration_seconds is not provided, AWS default duration is used.
         """
-        assert (
-            duration_seconds
-        ), 'assume_role() cannot be called without "duration_seconds" parameter; please check your "expires_in" parameters'
         try:
+            sts_client = self.sts_client
             if config and "aws_access_key_id" in config:
-                self.sts_client = client("sts", **config)
+                sts_client = client("sts", **config)
+
             session_name_postfix = uuid.uuid4()
-            return self.sts_client.assume_role(
-                RoleArn=role_arn,
-                DurationSeconds=duration_seconds,
-                RoleSessionName="{}-{}".format("gen3", session_name_postfix),
-            )
+
+            assume_kwargs = {
+                "RoleArn": role_arn,
+                "RoleSessionName": f"{role_session_name}-{session_name_postfix}",
+            }
+            if duration_seconds is not None:
+                assume_kwargs["DurationSeconds"] = duration_seconds
+
+            return sts_client.assume_role(**assume_kwargs)
+
         except Boto3Error as ex:
             self.logger.exception(ex)
-            raise InternalError("Fail to assume role: {}".format(ex))
+            raise InternalError(f"Fail to assume role: {ex}")
+
         except Exception as ex:
             self.logger.exception(ex)
-            raise UnavailableError("Fail to reach AWS: {}".format(ex))
+            raise UnavailableError(f"Fail to reach AWS: {ex}")
+
 
     def presigned_url(self, bucket, key, expires, config, method="get_object", dummy_s3=False):
         """
@@ -726,6 +734,57 @@ class BotoManager(object):
             files.append(object_summary.key)
 
         return files
+
+    def copy_object_between_s3(
+        self,
+        source_bucket,
+        source_key,
+        dest_bucket,
+        config=None,
+        dest_key=None,
+    ):
+        try:
+            s3_client = self.s3_client
+            if config and "aws_access_key_id" in config:
+                s3_client = client("s3", **config)
+
+            dest_key_computed = dest_key or source_key
+
+            s3_client.copy_object(
+                Bucket=dest_bucket,
+                Key=dest_key_computed,
+                CopySource={
+                    "Bucket": source_bucket,
+                    "Key": source_key
+                }
+            )
+        except Exception as e:
+            self.logger.error(f"Error copying file {source_key} from {source_bucket} to {dest_bucket}: {e}")
+            raise
+
+    def assert_keys_exist(self, bucket, keys, config=None):
+        try: 
+            s3_client = self.s3_client
+            if config and "aws_access_key_id" in config:
+                s3_client = client("s3", **config)
+
+            for key in keys:
+                s3_client.head_object(Bucket=bucket, Key=key)
+        except Exception as e:
+            self.logger.error(f"Error asserting files {keys} from {bucket}: {e}")
+            raise
+
+    def delete_s3_objects(self, bucket, keys, config=None):
+        try: 
+            s3_client = self.s3_client
+            if config and "aws_access_key_id" in config:
+                s3_client = client("s3", **config)
+
+            for key in keys:
+                s3_client.delete_object(Bucket=bucket, Key=key)
+        except Exception as e:
+            self.logger.error(f"Error deleting file {key} from {bucket}: {e}")
+            raise
 
     def get_secret(self, secret_name):
         try:
