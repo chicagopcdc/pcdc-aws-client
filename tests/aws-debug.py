@@ -7,7 +7,7 @@ from cdislogging import get_logger
 import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
@@ -80,6 +80,9 @@ def test_get_put_object(botomanager, bucket, key, expires, config, contents):
 
 
 def test_presigned_url(botomanager, bucket, config):
+    dir = os.path.dirname(__file__)
+    hello_path = os.path.join(dir, 'testfiles/test_data_file.txt')
+    botomanager.s3_client.upload_file(hello_path, bucket, 'test_data_file.txt')
     print(botomanager.presigned_url(bucket, 'test_data_file.txt', 1000, config))
 
 
