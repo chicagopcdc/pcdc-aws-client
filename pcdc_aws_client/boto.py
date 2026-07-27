@@ -116,7 +116,7 @@ class BotoManager(object):
                 "deleted file for prefix {} in bucket {}".format(prefix, bucket)
             )
             return ("", 204)
-        except (KeyError, Boto3Error) as e:
+        except (KeyError, ClientError, Boto3Error) as e:
             self.logger.error("Failed to delete file: {}".format(str(e)))
             return ("Unable to delete data file.", 500)
 
@@ -429,7 +429,7 @@ class BotoManager(object):
                 jitter=10,
             )
         except ClientError as error:
-            logger.error(
+            self.logger.error(
                 "Error when create multiple part upload for object with uuid {}. Detail {}".format(
                     key, error
                 )
