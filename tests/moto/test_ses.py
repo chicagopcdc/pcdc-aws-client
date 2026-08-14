@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from moto import mock_aws
 
 from pcdc_aws_client.boto import BotoManager
@@ -45,9 +45,30 @@ def test_send_email_raises_internal_error_when_sender_unverified(boto_manager):
             BODY_HTML="<p>hello</p>",
         )
 
-def test_send_email_with_multiple_recipients_and_cc_against_real_ses(boto_manager):
+def test_send_email_with_multiple_recipients_and_cc(boto_manager):
+    bm = boto_manager
+
+    with patch.object(bm, "ses_client") as mock_ses_client:
+        
+        bm.send_email(
+            SENDER="sender@example.com",
+            RECIPIENT=["a@example.com", "b@example.com"],
+            SUBJECT="Test",
+            BODY_HTML="<p>hello</p>",
+            CC_RECIPIENTS=["cc@example.com"],
+        )
+        _, kwargs = mock_ses_client.send_email.call_args
+
+        assert kwargs["Source"] == "sender@example.com"
+        assert kwargs["Destination"]["ToAddresses"] == ["a@example.com", "b@example.com"]
+        assert kwargs["Destination"]["CcAddresses"] == ["cc@example.com"]
+        assert kwargs["Message"]["Subject"]["Data"] == "Test"
+        assert kwargs["Message"]["Body"]["Html"]["Data"] == "<p>hello</p>"
+
+def test_send_email_with_multiple_recipients_and_cc_doesnt_raise(boto_manager):
     bm = boto_manager
     bm.ses_client.verify_email_identity(EmailAddress="sender@example.com")
+
     bm.send_email(
         SENDER="sender@example.com",
         RECIPIENT=["a@example.com", "b@example.com"],

@@ -100,7 +100,7 @@ def _get_ip_ranges_for_sg(bm, sg_id):
         for perm in sc["IpPermissions"]:
             for ip_range in perm["IpRanges"]:
                 result.setdefault(ip_range["CidrIp"], set()).add(
-                    (perm["IpProtocol"], perm["FromPort"])
+                    (perm["IpProtocol"], perm.get("FromPort"), perm.get("ToPort"))
                 )
     return result
 
@@ -132,14 +132,14 @@ def test_restrict_sc_leaves_non_http_open_rules_untouched(boto_manager):
     )
     bm.restrict_sc(sg_id, [])
     rules = _get_ip_ranges_for_sg(bm, sg_id)
-    assert ("tcp", 22) in rules.get("0.0.0.0/0", set())
+    assert ("tcp", 22, 22) in rules.get("0.0.0.0/0", set())
  
 def test_restrict_sc_adds_80_and_443_for_new_ip(boto_manager):
     bm = boto_manager
     sg_id = _create_security_group(bm)
     bm.restrict_sc(sg_id, ["203.0.113.5/32"])
     rules = _get_ip_ranges_for_sg(bm, sg_id)
-    assert rules["203.0.113.5/32"] == {("tcp", 80), ("tcp", 443)}
+    assert rules["203.0.113.5/32"] == {("tcp", 80, 80), ("tcp", 443, 443)}
  
 def test_restrict_sc_does_not_duplicate_existing_rule(boto_manager):
     """If an IP already has both 80 and 443, restrict_sc should not
@@ -155,7 +155,7 @@ def test_restrict_sc_does_not_duplicate_existing_rule(boto_manager):
     )
     bm.restrict_sc(sg_id, ["203.0.113.5/32"])
     rules = _get_ip_ranges_for_sg(bm, sg_id)
-    assert rules["203.0.113.5/32"] == {("tcp", 80), ("tcp", 443)}
+    assert rules["203.0.113.5/32"] == {("tcp", 80, 80), ("tcp", 443, 443)}
  
 def test_restrict_sc_adds_only_missing_port_when_ip_partially_present(boto_manager):
     """IP already has port 80 but not 443 -- only 443 should be added."""
@@ -169,7 +169,7 @@ def test_restrict_sc_adds_only_missing_port_when_ip_partially_present(boto_manag
     )
     bm.restrict_sc(sg_id, ["203.0.113.5/32"])
     rules = _get_ip_ranges_for_sg(bm, sg_id)
-    assert rules["203.0.113.5/32"] == {("tcp", 80), ("tcp", 443)}
+    assert rules["203.0.113.5/32"] == {("tcp", 80, 80), ("tcp", 443, 443)}
  
 def test_restrict_sc_full_scenario_open_access_replaced_by_allowlist(boto_manager):
     """End-to-end: starts fully open, ends restricted to exactly the
@@ -186,5 +186,5 @@ def test_restrict_sc_full_scenario_open_access_replaced_by_allowlist(boto_manage
     bm.restrict_sc(sg_id, ["203.0.113.5/32", "198.51.100.10/32"])
     rules = _get_ip_ranges_for_sg(bm, sg_id)
     assert "0.0.0.0/0" not in rules
-    assert rules["203.0.113.5/32"] == {("tcp", 80), ("tcp", 443)}
-    assert rules["198.51.100.10/32"] == {("tcp", 80), ("tcp", 443)}
+    assert rules["203.0.113.5/32"] == {("tcp", 80, 80), ("tcp", 443, 443)}
+    assert rules["198.51.100.10/32"] == {("tcp", 80, 80), ("tcp", 443, 443)}

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from pcdc_aws_client.boto import BotoManager
-from pcdc_aws_client.errors import InternalError, NotFound, UnavailableError, UserError
+from pcdc_aws_client.errors import InternalError, NotFound, UserError
 
 @pytest.fixture
 def boto_manager():

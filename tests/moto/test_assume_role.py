@@ -1,9 +1,8 @@
+from datetime import datetime, timedelta, timezone
 import pytest
 from unittest.mock import MagicMock
 from moto import mock_aws
-
 from pcdc_aws_client.boto import BotoManager
-from pcdc_aws_client.errors import InternalError, UnavailableError
 
 @pytest.fixture
 def boto_manager():
@@ -45,5 +44,17 @@ def test_assume_role_respects_duration_seconds(boto_manager):
         RoleName="test-role",
         AssumeRolePolicyDocument='{"Version": "2012-10-17", "Statement": []}',
     )
-    result = bm.assume_role(role["Role"]["Arn"], duration_seconds=3600)
-    assert "Credentials" in result
+    before = datetime.now(timezone.utc)
+
+    result = bm.assume_role(
+        role["Role"]["Arn"], duration_seconds=900
+    )
+    
+    after = datetime.now(timezone.utc)
+
+    expiration = result["Credentials"]["Expiration"]
+
+    expected_min = before + timedelta(seconds=900)
+    expected_max = after + timedelta(seconds=900)
+
+    assert expected_min <= expiration <= expected_max

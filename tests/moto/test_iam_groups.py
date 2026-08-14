@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from pcdc_aws_client.boto import BotoManager
-from botocore.exceptions import ClientError
 from moto import mock_aws
 
 @pytest.fixture
@@ -44,17 +43,6 @@ def test_get_all_groups(boto_manager):
     bm.iam.create_group(GroupName="group3")
     res = bm.get_all_groups(["group1", "group2", "group3"])
     assert set(res.keys()) == {"group1", "group2", "group3"}
-'''
-Uncomment this test when __get_policy_document_by_group_name__ is no longer a stub. 
-Currently get_all_groups cannot add a group as create_user_group does not work
-
-def test_get_all_groups_add(boto_manager):
-    bm = boto_manager
-    bm.iam.create_group(GroupName="group1")
-    bm.iam.create_group(GroupName="group2")
-    res = bm.get_all_groups(["group1", "group2", "extra_group"])
-    assert set(res.keys()) == {"group1", "group2", "extra_group"}
-'''
 
 #add user to group
 def test_add_user_to_group(boto_manager):
