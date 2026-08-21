@@ -24,7 +24,7 @@ def test_delete_data_file(boto_manager):
     msg, status = bm.delete_data_file("test-bucket", "test-keys/keys/")
     assert status == 204
     assert msg == ""
-    remaining = bm.s3_client.list_objects_v2(Bucket="test-bucket", Prefix="records/abc123/")
+    remaining = bm.s3_client.list_objects_v2(Bucket="test-bucket", Prefix="test-keys/keys/")
     assert remaining.get("Contents") is None
 
 def test_returns_404_file_not_found(boto_manager):
@@ -133,7 +133,7 @@ def test_partial_existence_deletes_the_ones_that_exist(boto_manager):
     remaining = bm.s3_client.list_objects_v2(Bucket="test-bucket")
     assert remaining.get("Contents") is None
 
-def test_raises_and_logs_when_bucket_does_not_exist(boto_manager):
+def test_delete_s3_objects_raises_and_logs_when_bucket_does_not_exist(boto_manager):
     bm = boto_manager
     with pytest.raises(Exception):
         bm.delete_s3_objects("failed-bucket", ["my-key"])
@@ -159,7 +159,7 @@ def test_returns_empty_when_no_file_exists(boto_manager):
     assert result == []
 
 
-def test_uses_custom_key_when_given(boto_manager):
+def test_load_csv_uses_custom_key_when_given(boto_manager):
     bm = boto_manager
     bm.s3_client.put_object(
         Bucket="test-bucket", Key="custom/path.csv", Body=b"a,b\n1,2\n"
@@ -178,7 +178,7 @@ def test_uploads_rows_as_csv(boto_manager):
     content = obj["Body"].read().decode("utf-8")
     assert content == "user_id,timestamp,raw\r\n1,100,foo\r\n"
 
-def test_uses_custom_key_when_given(boto_manager):
+def test_upload_csv_uses_custom_key_when_given(boto_manager):
     bm = boto_manager
     rows = [{"a": "1"}]
     bm.upload_csv_content_to_s3(rows, "test-bucket", s3_key="custom/out.csv")
@@ -237,7 +237,7 @@ def test_overwrites_existing_key(boto_manager):
     obj = bm.s3_client.get_object(Bucket="test-bucket", Key="config.json")
     assert json.loads(obj["Body"].read()) == {"new": True}
 
-def test_raises_and_logs_when_bucket_does_not_exist(boto_manager):
+def test_put_json_raises_and_logs_when_bucket_does_not_exist(boto_manager):
     bm = boto_manager
     with pytest.raises(Exception):
         bm.put_json_to_s3("bucket-that-does-not-exist", "config.json", {"a": 1})
