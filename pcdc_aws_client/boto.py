@@ -519,20 +519,20 @@ class BotoManager(object):
                     {'Name': 'vpc-id', 'Values': [vpc_id]}
                 ]
             )
-        public_ips = []
-        # Check if any NAT Gateways were found
-        if not nat_gateways_response['NatGateways']:
-            self.logger.info("No NAT Gateways found in VPC {vpc_name}.")
-        else:
-            for nat_gateway in nat_gateways_response['NatGateways']:
-                nat_gateway_id = nat_gateway['NatGatewayId']
-                for address in nat_gateway['NatGatewayAddresses']:
-                    public_ip = address.get('PublicIp')
-                    if public_ip:
-                        self.logger.info(f"NAT Gateway ID: {nat_gateway_id}, Public IP: {public_ip}")
-                        public_ips.append(public_ip + '/32')
-        
-        return public_ips
+            public_ips = []
+            # Check if any NAT Gateways were found
+            if not nat_gateways_response['NatGateways']:
+                self.logger.info(f"No NAT Gateways found in VPC {vpc_name}.")
+            else:
+                for nat_gateway in nat_gateways_response['NatGateways']:
+                    nat_gateway_id = nat_gateway['NatGatewayId']
+                    for address in nat_gateway['NatGatewayAddresses']:
+                        public_ip = address.get('PublicIp')
+                        if public_ip:
+                            self.logger.info(f"NAT Gateway ID: {nat_gateway_id}, Public IP: {public_ip}")
+                            public_ips.append(public_ip + '/32')
+
+            return public_ips
     
     def get_ec2_public_ips_by_name(self, name):
         response = self.ec2_client.describe_instances(
