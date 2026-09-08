@@ -661,7 +661,7 @@ class BotoManager(object):
             try:
                 post_url = url_info['url']
                 data = url_info['fields']
-                response = requests.post(post_url, data, files={'file':f})
+                response = requests.post(post_url, data, files={'file':('dummy_filename.txt',f)})
                 response.raise_for_status()
             except requests.exceptions.HTTPError as ex:
                 self.logger.info(
