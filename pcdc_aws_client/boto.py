@@ -659,7 +659,6 @@ class BotoManager(object):
             f.flush()
             f.seek(0)
             file_bytes = f.read()
-            print(f"TYPE FILE_BYTES: {type(file_bytes)}")
             try:
                 post_url = url_info['url']
                 data = url_info['fields']
