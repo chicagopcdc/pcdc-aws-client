@@ -1,5 +1,4 @@
 import json
-import tempfile
 import time
 import uuid
 import csv
@@ -651,29 +650,24 @@ class BotoManager(object):
             self.logger.exception(ex)
             raise InternalError("Failed to generate presigned post url: {}".format(ex))
 
-        with tempfile.NamedTemporaryFile(mode="w+") as f:
-            if type(contents) is str:
-                f.write(contents)
-            else:
-                json.dump(contents, f)
-            f.flush()
-            f.seek(0)
-            file_bytes = f.read()
-            try:
-                post_url = url_info['url']
-                data = url_info['fields']
-                response = requests.post(post_url, data, files={'file':(key,file_bytes)})
-                response.raise_for_status()
-            except requests.exceptions.HTTPError as ex:
-                self.logger.info(
-                    "HTTP Error {} fetching bucket {} key {}".format(
-                        ex, bucket, key
-                    )
-                )
-                raise InternalError("Failed to put object: {} in bucket: {} exception: {}".format(key, bucket, ex))
 
-            except Exception as ex:
-                raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
+        if type(contents) is not str:
+            contents = json.dumps(contents)
+        try:
+            post_url = url_info['url']
+            data = url_info['fields']
+            response = requests.post(post_url, data, files={'file':(key,contents)})
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as ex:
+            self.logger.info(
+                "HTTP Error {} fetching bucket {} key {}".format(
+                    ex, bucket, key
+                )
+            )
+            raise InternalError("Failed to put object: {} in bucket: {} exception: {}".format(key, bucket, ex))
+
+        except Exception as ex:
+            raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
 
 
     def load_csv_from_s3(self, s3_bucket_name, s3_key="cache/cache.csv"):
