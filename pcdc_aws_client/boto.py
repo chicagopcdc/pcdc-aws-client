@@ -651,9 +651,9 @@ class BotoManager(object):
             raise InternalError("Failed to generate presigned post url: {}".format(ex))
 
 
-        if type(contents) is not str:
-            contents = json.dumps(contents)
         try:
+            if type(contents) is not str:
+                contents = json.dumps(contents)
             post_url = url_info['url']
             data = url_info['fields']
             response = requests.post(post_url, data, files={'file':(key,contents)})
