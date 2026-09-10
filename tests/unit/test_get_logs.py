@@ -1,20 +1,12 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from botocore.exceptions import ClientError
 from pcdc_aws_client.boto import BotoManager
 
-@pytest.fixture
-def boto_manager():
-    with patch("pcdc_aws_client.boto.Session") as MockSession:
-        mock_session = MagicMock()
-        MockSession.return_value = mock_session
-        bm = BotoManager(config={"region_name": "us-east-1"}, logger=MagicMock())
-        yield bm, mock_session
-
 
 def test_returns_response_query_completes_on_first_check(boto_manager):
-    bm, mock_session = boto_manager
-    logs_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    logs_client = bm.logs_client
     logs_client.start_query.return_value = {"queryId": "query-123"}
     logs_client.get_query_results.return_value = {"status": "Complete", "results": [["a", "b"]]}
     result = bm.get_logs("my-log-group", 1000, 2000, "fields @message")
@@ -28,8 +20,8 @@ def test_returns_response_query_completes_on_first_check(boto_manager):
     )
 
 def test_polls_until_complete_and_sleeps_between_checks(boto_manager):
-    bm, mock_session = boto_manager
-    logs_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    logs_client = bm.logs_client
     logs_client.start_query.return_value = {"queryId": "query-123"}
     logs_client.get_query_results.side_effect = [
         {"status": "Running"},
@@ -46,8 +38,8 @@ def test_polls_until_complete_and_sleeps_between_checks(boto_manager):
     mock_sleep.assert_called_with(60)
 
 def test_client_error_on_start_query_prints_and_returns_none(boto_manager):
-    bm, mock_session = boto_manager
-    logs_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    logs_client = bm.logs_client
     logs_client.start_query.side_effect = ClientError(
         error_response={"Error": {"Code": "ResourceNotFound", "Message": "no such log group"}},
         operation_name="StartQuery",
@@ -57,8 +49,8 @@ def test_client_error_on_start_query_prints_and_returns_none(boto_manager):
 
 def test_error_on_get_query_results_prints_and_returns_none(boto_manager):
     from botocore.exceptions import ClientError
-    bm, mock_session = boto_manager
-    logs_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    logs_client = bm.logs_client
     logs_client.start_query.return_value = {"queryId": "query-123"}
     logs_client.get_query_results.side_effect = ClientError(
         error_response={"Error": {"Code": "Exception", "Message": "rate exceeded"}},
@@ -66,3 +58,11 @@ def test_error_on_get_query_results_prints_and_returns_none(boto_manager):
     )
     result = bm.get_logs("my-log-group", 1000, 2000, "fields @message")
     assert result is None
+
+def test_terminal_status_raises_runtime_error(boto_manager):
+    bm, _ = boto_manager
+    logs_client = bm.logs_client
+    logs_client.start_query.return_value = {"queryId": "query-456"}
+    logs_client.get_query_results.return_value = {"status": "Failed"}
+    with pytest.raises(RuntimeError, match="Failed"):
+        bm.get_logs("my-log-group", 1000, 2000, "fields @message")

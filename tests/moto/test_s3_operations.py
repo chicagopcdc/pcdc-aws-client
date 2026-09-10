@@ -73,8 +73,9 @@ def test_copy_object_between_s3_with_destination_key(boto_manager):
     copied = bm.s3_client.get_object(Bucket="my-new-bucket", Key="abracadabra-key")
     assert copied["Body"].read() == b"a,b,cd"
 
-    with pytest.raises(ClientError):
-        bm.s3_client.get_object(Bucket="dest-bucket", Key="my-key")
+    with pytest.raises(ClientError) as exc_info:
+        bm.s3_client.get_object(Bucket="my-new-bucket", Key="my-key")
+    assert exc_info.value.response["Error"]["Code"] == "NoSuchKey"
 
 def test_copy_object_between_s3_raise_exception_nonexistent_source_key(boto_manager):
     bm = boto_manager

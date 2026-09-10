@@ -1,16 +1,8 @@
 import pytest
-from unittest.mock import MagicMock, patch
-from moto import mock_aws
+from unittest.mock import patch
 
-from pcdc_aws_client.boto import BotoManager
 from pcdc_aws_client.errors import InternalError
 
-
-@pytest.fixture
-def boto_manager():
-    with mock_aws():
-        bm = BotoManager(config={"region_name": "us-east-1"}, logger=MagicMock())
-        yield bm
 
 def test_send_email_succeeds_when_sender_is_verified(boto_manager):
     bm = boto_manager

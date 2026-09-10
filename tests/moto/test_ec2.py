@@ -1,15 +1,4 @@
 import pytest
-from unittest.mock import MagicMock
-from moto import mock_aws
- 
-from pcdc_aws_client.boto import BotoManager
- 
- 
-@pytest.fixture
-def boto_manager():
-    with mock_aws():
-        bm = BotoManager(config={"region_name": "us-east-1"}, logger=MagicMock())
-        yield bm
 
 #get vpc gateway ips
 def test_get_vpc_nat_gateway_ips(boto_manager):

@@ -1,15 +1,5 @@
 from datetime import datetime, timedelta, timezone
 import pytest
-from unittest.mock import MagicMock
-from moto import mock_aws
-from pcdc_aws_client.boto import BotoManager
-
-@pytest.fixture
-def boto_manager():
-    with mock_aws():
-        bm = BotoManager(config={"region_name": "us-east-1"}, logger=MagicMock())
-        bm.s3_client.create_bucket(Bucket="test-bucket")
-        yield bm
 
 # assume_role
 def test_assume_role_returns_temporary_credentials(boto_manager):

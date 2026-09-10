@@ -3,23 +3,11 @@ import pytest
 from unittest.mock import MagicMock, patch
 import requests
 
-from pcdc_aws_client.boto import BotoManager
 from pcdc_aws_client.errors import NotFound, InternalError
 
 
 FAKE_PRESIGNED_URL = "https://test-bucket.s3.amazonaws.com/my-key?sig=abc"
 
-@pytest.fixture
-def boto_manager():
-    '''
-    builds a botomanager without hitting AWS
-    '''
-    with patch("pcdc_aws_client.boto.Session") as MockSession:
-        mock_session = MagicMock()
-        MockSession.return_value = mock_session
-        bm = BotoManager(config = {"region_name": "us-east-1"}, logger=MagicMock())
-        yield bm, mock_session
-        
 #get object
 def test_get_object_returns_parsed_json_by_default(boto_manager):
     bm, _ = boto_manager
@@ -62,8 +50,8 @@ def test_get_object_raises_internal_error_when_presigning_fails(boto_manager):
 
 #put object
 def test_put_object_posts_contents_as_string(boto_manager):
-    bm, mock_session = boto_manager
-    s3_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    s3_client = bm.s3_client
     s3_client.generate_presigned_post.return_value = {
         "url": "https://test-bucket.s3.amazonaws.com/",
         "fields": {"key": "my-key", "policy": "abc"},
@@ -86,8 +74,8 @@ def test_put_object_posts_contents_as_string(boto_manager):
         assert "file" in kwargs["files"]
 
 def test_put_object_raises_internal_error_on_http_error(boto_manager):
-    bm, mock_session = boto_manager
-    s3_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    s3_client = bm.s3_client
     s3_client.generate_presigned_post.return_value = {
         "url": "https://test-bucket.s3.amazonaws.com/",
         "fields": {"key": "my-key"},
@@ -101,8 +89,8 @@ def test_put_object_raises_internal_error_on_http_error(boto_manager):
             bm.put_object("test-bucket", "my-key", 300, {}, contents="hello")
 
 def test_put_object_raises_internal_error_presigned_post_fail(boto_manager):
-    bm, mock_session = boto_manager
-    s3_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    s3_client = bm.s3_client
     s3_client.generate_presigned_post.side_effect = Exception("boom")
     with pytest.raises(InternalError):
         bm.put_object("test-bucket", "my-key", 300, {}, contents="hello")

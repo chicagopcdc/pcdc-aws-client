@@ -1,19 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError
-from pcdc_aws_client.boto import BotoManager
 from pcdc_aws_client.errors import InternalError
 
-@pytest.fixture
-def boto_manager():
-    '''
-    builds a botomanager without hitting AWS
-    '''
-    with patch("pcdc_aws_client.boto.Session") as MockSession:
-        mock_session = MagicMock()
-        MockSession.return_value = mock_session
-        bm = BotoManager(config = {"region_name": "us-east-1"}, logger=MagicMock())
-        yield bm, mock_session
 
 def make_client_error(message="Errors"):
     return ClientError(
@@ -23,8 +12,8 @@ def make_client_error(message="Errors"):
 
 #initialize multipart upload
 def test_initilize_multipart_upload_calls_retry_call_with_correct_args(boto_manager):
-    bm, mock_session = boto_manager
-    s3_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    s3_client = bm.s3_client
     with patch("pcdc_aws_client.boto.retry_call") as mock_retry_call:
         mock_retry_call.return_value = {"UploadId": "upload-123"}
         result = bm.initilize_multipart_upload("my-bucket", "my-key", MAX_TRIES=3)
@@ -37,8 +26,8 @@ def test_initilize_multipart_upload_calls_retry_call_with_correct_args(boto_mana
         assert result == "upload-123"
 
 def test_initilize_multipart_upload_succeeds_after_failures(boto_manager):
-    bm, mock_session = boto_manager
-    s3_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    s3_client = bm.s3_client
     s3_client.create_multipart_upload.side_effect = [
         make_client_error(),
         make_client_error(),
@@ -50,8 +39,8 @@ def test_initilize_multipart_upload_succeeds_after_failures(boto_manager):
     assert s3_client.create_multipart_upload.call_count == 3
 
 def test_initilize_multipart_upload_raises_internal_error(boto_manager):
-    bm, mock_session = boto_manager
-    s3_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    s3_client = bm.s3_client
     s3_client.create_multipart_upload.side_effect = make_client_error()
     with patch("time.sleep", return_value=None):
         with pytest.raises(InternalError):
@@ -60,8 +49,8 @@ def test_initilize_multipart_upload_raises_internal_error(boto_manager):
 
 #complete multipart upload
 def test_complete_multipart_upload_calls_retry_call_with_correct_args(boto_manager):
-    bm, mock_session = boto_manager
-    s3_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    s3_client = bm.s3_client
     parts = [{"ETag": "part", "PartNumber": 1}]
     with patch("pcdc_aws_client.boto.retry_call") as mock_retry_call:
         bm.complete_multipart_upload("my-bucket", "my-key", "upload-123", parts, MAX_TRIES=3)
@@ -78,8 +67,8 @@ def test_complete_multipart_upload_calls_retry_call_with_correct_args(boto_manag
         )
 
 def test_complete_multipart_upload_raises_internal_error(boto_manager):
-    bm, mock_session = boto_manager
-    s3_client = mock_session.client.return_value
+    bm, _ = boto_manager
+    s3_client = bm.s3_client
     s3_client.complete_multipart_upload.side_effect = make_client_error("Parts mismatch")
     parts = [{"ETag": "part", "PartNumber": 1}]
     with patch("time.sleep", return_value=None):

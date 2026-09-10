@@ -1,17 +1,4 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from pcdc_aws_client.boto import BotoManager
-from moto import mock_aws
-
-@pytest.fixture
-def boto_manager():
-    '''
-    builds a botomanager without hitting AWS
-    '''
-    with mock_aws():
-        bm = BotoManager(config={"region_name": "us-east-1"}, logger=MagicMock())
-        bm.s3_client.create_bucket(Bucket="test-bucket")
-        yield bm
 
 #get user group
 def test_get_user_group(boto_manager):
