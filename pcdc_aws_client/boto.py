@@ -634,29 +634,39 @@ class BotoManager(object):
         else:
             return response
 
-    def put_object(self, bucket, key, expires, config, contents): 
+    def put_object(self, bucket, key, expires, config, contents):
         """
-        This function creates and uploads string or json to an s3 bucket 
+        This function creates and uploads string or json to an s3 bucket
         Args:
             bucket (str): bucket name
             key (str): key in bucket
             expires (int): presigned URL expiration time, in seconds
             config (dict): additional parameters if necessary (e.g. updating access key)
-            contents: text or json content
+            contents: text or json content (str, bytes, or JSON-serialisable object)
         """
+        expires = int(expires) if expires and int(expires) else self.URL_EXPIRATION_DEFAULT
+        expires = min(expires, self.URL_EXPIRATION_MAX)
+
         try:
-            url_info = self.s3_client.generate_presigned_post(Bucket = bucket, Key = key, ExpiresIn = 30)
+            url_info = self.s3_client.generate_presigned_post(Bucket=bucket, Key=key, ExpiresIn=expires)
         except Exception as ex:
             self.logger.exception(ex)
             raise InternalError("Failed to generate presigned post url: {}".format(ex))
 
+        # Serialise non-string, non-bytes content before entering the network try block
+        # so a TypeError from bad input is not misreported as an HTTP failure.
+        if not isinstance(contents, (str, bytes)):
+            try:
+                contents = json.dumps(contents)
+            except (TypeError, ValueError) as ex:
+                raise InternalError(
+                    "Failed to serialise contents for key: {} bucket: {} exception: {}".format(key, bucket, ex)
+                )
 
         try:
-            if type(contents) is not str:
-                contents = json.dumps(contents)
             post_url = url_info['url']
             data = url_info['fields']
-            response = requests.post(post_url, data, files={'file':(key,contents)})
+            response = requests.post(post_url, data, files={'file': (key, contents)})
             response.raise_for_status()
         except requests.exceptions.HTTPError as ex:
             self.logger.info(
@@ -667,7 +677,8 @@ class BotoManager(object):
             raise InternalError("Failed to put object: {} in bucket: {} exception: {}".format(key, bucket, ex))
 
         except Exception as ex:
-            raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
+            self.logger.exception(ex)
+            raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket, ex))
 
 
     def load_csv_from_s3(self, s3_bucket_name, s3_key="cache/cache.csv"):
