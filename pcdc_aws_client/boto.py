@@ -1,5 +1,4 @@
 import json
-import tempfile
 import time
 import uuid
 import csv
@@ -116,6 +115,10 @@ class BotoManager(object):
                 "deleted file for prefix {} in bucket {}".format(prefix, bucket)
             )
             return ("", 204)
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            self.logger.error("Failed to delete file (AWS error {}): {}".format(error_code, str(e)))
+            return ("Unable to delete data file.", 500)
         except (KeyError, Boto3Error) as e:
             self.logger.error("Failed to delete file: {}".format(str(e)))
             return ("Unable to delete data file.", 500)
@@ -162,8 +165,9 @@ class BotoManager(object):
         """
         if method not in ["get_object", "put_object"]:
             raise UserError("method {} not allowed".format(method))
+        s3_client = self.s3_client
         if "aws_access_key_id" in config:
-            self.s3_client = client("s3", **config)
+            s3_client = client("s3", **config)
 
         expires = int(expires) if expires and int(expires) else self.URL_EXPIRATION_DEFAULT
         expires = min(expires, self.URL_EXPIRATION_MAX)
@@ -173,7 +177,7 @@ class BotoManager(object):
         if not dummy_s3:
             if method == "get_object":
                 try:
-                    response = self.s3_client.get_object(Bucket=bucket, Key=key)
+                    response = s3_client.get_object(Bucket=bucket, Key=key)
                 except Exception as e:
                     self.logger.exception(e)
                     raise NotFound("Could not locate file")
@@ -182,7 +186,7 @@ class BotoManager(object):
             params["ServerSideEncryption"] = "AES256"
 
         try:
-            return self.s3_client.generate_presigned_url(
+            return s3_client.generate_presigned_url(
                 ClientMethod=method, Params=params, ExpiresIn=expires
             )
         except Exception as ex:
@@ -195,9 +199,10 @@ class BotoManager(object):
         get region for a specfic aws bucket
         """
         try:
+            s3_client = self.s3_client
             if "aws_access_key_id" in config:
-                self.s3_client = client("s3", **config)
-            response = self.s3_client.get_bucket_location(Bucket=bucket)
+                s3_client = client("s3", **config)
+            response = s3_client.get_bucket_location(Bucket=bucket)
             region = response.get("LocationConstraint")
         except Boto3Error as ex:
             self.logger.exception(ex)
@@ -400,23 +405,22 @@ class BotoManager(object):
                 queryId=queryId
             )
             while response["status"] != "Complete":
-                print(response["status"] + "...")
-                if response["status"] == "Cancelled" or response["status"] =="Failed" or response["status"] == "Timeout" or response["status"] =="Unknown":
-                    print(response)
-                    print("your queryId is: " + queryId + ". Please Check on the AWS console if the description in the response above is not helpful.")
-                    exit()
-                print("hang in there while AWS is searching...")
+                self.logger.info(response["status"] + "...")
+                if response["status"] in ("Cancelled", "Failed", "Timeout", "Unknown"):
+                    self.logger.error(response)
+                    raise RuntimeError(
+                        "CloudWatch query {} ended with status {}. "
+                        "Check the AWS console for details.".format(queryId, response["status"])
+                    )
+                self.logger.info("hang in there while AWS is searching...")
                 time.sleep(60)
                 response = self.logs_client.get_query_results(
                     queryId=queryId
                 )
-            # print(response["results"])
-            # print(len(response["results"]))
-    
+
         except ClientError as e:
-            print(e.response['Error']['Message'])
+            self.logger.error(e.response['Error']['Message'])
         else:
-            # print(response)
             return response
 
     #fence\blueprints\data\multipart_upload.py
@@ -429,7 +433,7 @@ class BotoManager(object):
                 jitter=10,
             )
         except ClientError as error:
-            logger.error(
+            self.logger.error(
                 "Error when create multiple part upload for object with uuid {}. Detail {}".format(
                     key, error
                 )
@@ -635,44 +639,51 @@ class BotoManager(object):
         else:
             return response
 
-    def put_object(self, bucket, key, expires, config, contents): 
+    def put_object(self, bucket, key, expires, config, contents):
         """
-        This function creates and uploads string or json to an s3 bucket 
+        This function creates and uploads string or json to an s3 bucket
         Args:
             bucket (str): bucket name
             key (str): key in bucket
             expires (int): presigned URL expiration time, in seconds
             config (dict): additional parameters if necessary (e.g. updating access key)
-            contents: text or json content
+            contents: text or json content (str, bytes, or JSON-serialisable object)
         """
+        expires = int(expires) if expires and int(expires) else self.URL_EXPIRATION_DEFAULT
+        expires = min(expires, self.URL_EXPIRATION_MAX)
+
         try:
-            url_info = self.s3_client.generate_presigned_post(Bucket = bucket, Key = key, ExpiresIn = 30)
+            url_info = self.s3_client.generate_presigned_post(Bucket=bucket, Key=key, ExpiresIn=expires)
         except Exception as ex:
             self.logger.exception(ex)
             raise InternalError("Failed to generate presigned post url: {}".format(ex))
 
-        with tempfile.NamedTemporaryFile(mode="w+") as f:
-            if type(contents) is str:
-                f.write(contents)
-            else:
-                json.dump(contents, f)
-            f.flush()
-            f.seek(0)
+        # Serialise non-string, non-bytes content before entering the network try block
+        # so a TypeError from bad input is not misreported as an HTTP failure.
+        if not isinstance(contents, (str, bytes)):
             try:
-                post_url = url_info['url']
-                data = url_info['fields']
-                response = requests.post(post_url, data, files={'file':f})
-                response.raise_for_status()
-            except requests.exceptions.HTTPError as ex:
-                self.logger.info(
-                    "HTTP Error {} fetching bucket {} key {}".format(
-                        ex, bucket, key
-                    )
+                contents = json.dumps(contents)
+            except (TypeError, ValueError) as ex:
+                raise InternalError(
+                    "Failed to serialise contents for key: {} bucket: {} exception: {}".format(key, bucket, ex)
                 )
-                raise InternalError("Failed to put object: {} in bucket: {} exception: {}".format(key, bucket, ex))
 
-            except Exception as ex:
-                raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket,ex))
+        try:
+            post_url = url_info['url']
+            data = url_info['fields']
+            response = requests.post(post_url, data, files={'file': (key, contents)})
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as ex:
+            self.logger.info(
+                "HTTP Error {} fetching bucket {} key {}".format(
+                    ex, bucket, key
+                )
+            )
+            raise InternalError("Failed to put object: {} in bucket: {} exception: {}".format(key, bucket, ex))
+
+        except Exception as ex:
+            self.logger.exception(ex)
+            raise InternalError("Post failed key: {} bucket: {} exception: {}".format(key, bucket, ex))
 
 
     def load_csv_from_s3(self, s3_bucket_name, s3_key="cache/cache.csv"):
@@ -788,41 +799,31 @@ class BotoManager(object):
             raise
 
     def get_secret(self, secret_name):
-        try:
-            get_secret_value_response = self.secrets_client.get_secret_value(
-                SecretId=secret_name
-            )
-        except ClientError as e:
-            # For a list of exceptions thrown, see
-            # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-            raise e
-
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        get_secret_value_response = self.secrets_client.get_secret_value(
+            SecretId=secret_name
+        )
         # Decrypts secret using the associated KMS key.
         secret = get_secret_value_response['SecretString']
         return secret
 
     def get_param_from_ssm(self, parameter_name):
-        try:
-            # Get credentials from AWS SSM Parameter Store
-            param = self.ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
-        except ClientError as e:
-            raise e
-
+        # Get credentials from AWS SSM Parameter Store
+        param = self.ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
         param = json.loads(param["Parameter"]["Value"])
         return param
 
-    def submit_batch_job(self, job_definition, job_name, job_queue, container_overrides={}):
-        try:
-            response = self.batch_client.submit_job(
-                jobDefinition=job_definition,
-                jobName=job_name,
-                jobQueue=job_queue,
-                containerOverrides=container_overrides
-            )
-            print(response)
-        except ClientError as e:
-            raise e
-
+    def submit_batch_job(self, job_definition, job_name, job_queue, container_overrides=None):
+        if container_overrides is None:
+            container_overrides = {}
+        response = self.batch_client.submit_job(
+            jobDefinition=job_definition,
+            jobName=job_name,
+            jobQueue=job_queue,
+            containerOverrides=container_overrides
+        )
+        self.logger.info(response)
         return response
 
 

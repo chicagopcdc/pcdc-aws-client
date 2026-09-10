@@ -2,12 +2,10 @@ from boto3 import client
 from boto3.exceptions import Boto3Error
 from pcdc_aws_client.boto import BotoManager
 import os
-import json
 from cdislogging import get_logger
-import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
@@ -80,7 +78,13 @@ def test_get_put_object(botomanager, bucket, key, expires, config, contents):
 
 
 def test_presigned_url(botomanager, bucket, config):
-    print(botomanager.presigned_url(bucket, 'test_data_file.txt', 1000, config))
+    dir = os.path.dirname(__file__)
+    hello_path = os.path.join(dir, 'testfiles/test_data_file.txt')
+    botomanager.s3_client.upload_file(hello_path, bucket, 'test_data_file.txt')
+    url = botomanager.presigned_url(bucket, 'test_data_file.txt', 1000, config)
+    assert(isinstance(url, str))
+    assert(url.startswith("http"))
+    assert("test_data_file.txt" in url)
 
 
 def test_send_email(botomanager):
